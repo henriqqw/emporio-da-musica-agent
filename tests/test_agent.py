@@ -93,13 +93,23 @@ def test_invalid_tool_call_goes_back_as_error(toolbox, arguments):
     assert reply.text == "Me conta qual instrumento você procura?"
 
 
-def test_stops_after_max_tool_rounds(toolbox):
-    looping = [tool_response("search_products", {"query": "violão"}, f"c{i}") for i in range(10)]
-    client = FakeClient(*looping)
-    reply = _agent(client, toolbox).respond(_history(), CONTEXT, None)
+def test_stops_after_max_tool_rounds_without_running_the_extra_call(toolbox, tmp_path):
+    searches = [tool_response("search_products", {"query": "violão"}, f"c{i}") for i in range(5)]
+    # the model asks for a write after the round limit: it must not happen silently
+    complaint = tool_response(
+        "register_complaint", {"summary": "Atraso.", "category": "atraso_entrega"}, "c5"
+    )
+    client = FakeClient(*searches, complaint)
+    history = _history()
+    reply = _agent(client, toolbox).respond(history, CONTEXT, None)
+
     assert reply.fallback is True
     assert reply.text == FALLBACK_REPLY
     assert len(client.requests) == MAX_TOOL_ROUNDS + 1
+    assert reply.tools_called == ["search_products"] * MAX_TOOL_ROUNDS
+    assert not (tmp_path / "c.jsonl").exists()
+    # the unexecuted call is not left in the history either
+    assert history[-1]["role"] == "tool"
 
 
 def test_content_filter_gives_fallback(toolbox):

@@ -59,7 +59,7 @@ class Agent:
         system = {"role": "system", "content": prompt}
         reply = AgentReply(text="")
 
-        for _ in range(MAX_TOOL_ROUNDS + 1):
+        for round_number in range(MAX_TOOL_ROUNDS + 1):
             try:
                 response = self._client.chat.completions.create(
                     model=self._model,
@@ -78,6 +78,12 @@ class Agent:
                 logger.warning("model refused or response was filtered")
                 return _fallback(reply)
 
+            if message.tool_calls and round_number == MAX_TOOL_ROUNDS:
+                # Never run a tool whose result the customer will not see: a complaint
+                # written here would be registered without its protocol being told.
+                logger.warning("still calling tools after %d rounds; none run", MAX_TOOL_ROUNDS)
+                return _fallback(reply)
+
             history.append(_assistant_message(message))
             if not message.tool_calls:
                 reply.text = (message.content or "").strip()
@@ -86,8 +92,7 @@ class Agent:
             for call in message.tool_calls:
                 history.append(self._run_tool(call, context, reply))
 
-        logger.warning("stopped after %d tool rounds", MAX_TOOL_ROUNDS)
-        return _fallback(reply)
+        raise AssertionError("unreachable: the last round returns")
 
     def _run_tool(self, call: Any, context: ToolContext, reply: AgentReply) -> dict[str, Any]:
         name = call.function.name
