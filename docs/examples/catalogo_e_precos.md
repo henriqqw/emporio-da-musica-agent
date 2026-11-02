@@ -18,14 +18,16 @@
 
 **Assistente:**
 
-> Oi, Rodrigo! Temos 12 modelos de violões até R$ 1.000,00. Aqui estão algumas opções disponíveis:
+> Oi, Rodrigo! Tudo bem?
 > 
-> • *Tagima Memphis AC-39 Nylon Natural* — R$ 429,90 (ou _R$ 408,41_ no PIX)
-> • *Rozini RC-104 Nylon Estudante* — R$ 459,90 (ou _R$ 436,91_ no PIX)
-> • *Shelby SN-100 Folk Aço Preto* — R$ 549,00 (ou _R$ 521,55_ no PIX)
-> • *Yamaha C40 Nylon Natural* — R$ 599,90 (ou _R$ 569,91_ no PIX)
+> Temos 12 violões nessa faixa de preço por aqui. Olhe só algumas das opções disponíveis:
 > 
-> Quer ver os detalhes de algum desses ou prefere que eu te mostre os outros modelos?
+> • *Tagima Memphis AC-39 Nylon Natural* — R$ 429,90 (ou em até 5x de R$ 85,98)
+> • *Rozini RC-104 Nylon Estudante* — R$ 459,90 (ou em até 5x de R$ 91,98)
+> • *Shelby SN-100 Folk Aço Preto* — R$ 549,00 (ou em até 6x de R$ 91,50)
+> • *Giannini GF-1R Aço Folk Sunburst* — R$ 579,90 (ou em até 6x de R$ 96,65)
+> 
+> Como temos mais opções além dessas, quer que eu te mostre o restante ou prefere que a gente filtre por cordas de aço ou nylon?
 
 **Cliente:** Quanto custa o Takamine GD20?
 
@@ -33,14 +35,14 @@
 
 **Assistente:**
 
-> O *Takamine GD20 Dreadnought Natural* custa R$ 2.199,00, ou _R$ 2.089,05_ no PIX. Ele também pode ser parcelado em até 12x sem juros de R$ 183,25 no cartão.
+> O *Takamine GD20 Dreadnought Natural* custa R$ 2.199,00, e você pode parcelar em até 12x de R$ 183,25 sem juros no cartão de crédito, ou pagar R$ 2.089,05 no PIX.
 > 
-> Quer saber mais sobre ele ou prefere ver outras opções?
+> Gostaria de ver outros violões parecidos com ele?
 
 **Cliente:** Ele ainda tá naquela promoção de oferta especial?
 
 **Assistente:**
 
-> Essa promoção (Oferta Especial) não está mais vigente. O preço atual dele é R$ 2.199,00 (ou _R$ 2.089,05_ no PIX), com parcelamento em até 12x sem juros de R$ 183,25 no cartão.
+> Essa promoção de oferta especial (12%) não está mais vigente, Rodrigo. O valor atual dele é R$ 2.199,00.
 > 
-> Quer aproveitar e garantir o seu?
+> Quer dar uma olhada em outros violões que estejam com promoção ativa no momento?

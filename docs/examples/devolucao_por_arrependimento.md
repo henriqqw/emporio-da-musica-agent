@@ -16,7 +16,7 @@
 
 **Assistente:**
 
-> Oi, Letícia! Para eu conferir se a devolução por arrependimento está no prazo para o seu pedido, me passa o seu e-mail cadastrado?
+> Olá, Letícia! Para eu conferir se a devolução está dentro do prazo e quais regras se aplicam, você poderia me informar o e-mail cadastrado na compra?
 
 **Cliente:** leticia@gmail.com
 
@@ -24,7 +24,7 @@
 
 **Assistente:**
 
-> Letícia, não encontrei um cadastro com este número e esse e-mail. Você poderia conferir o e-mail que usou na compra ou falar com a nossa equipe pelo WhatsApp no número (67) 3321-4500?
+> Letícia, não encontrei um cadastro com este número e esse e-mail. Você poderia conferir se o e-mail está correto ou falar diretamente com a nossa equipe pelo WhatsApp no (67) 3321-4500?
 
 **Cliente:** Ah, errei. É leticia.rocha@jmail.com
 
@@ -32,20 +32,18 @@
 
 **Assistente:**
 
-> Letícia, verifiquei o seu pedido (número 7, do dia 03/02/2026, com entrega em 17/02/2026).
+> Letícia, verifiquei o seu pedido (número 7), que foi entregue em 17/02/2026.
 > 
-> O prazo para o direito de arrependimento (que era de até 7 dias corridos após o recebimento, indo até 24/02/2026) já se encerrou. A troca por preferência também seguia esse mesmo prazo.
+> Como o prazo para devolução por arrependimento em compras online é de até 7 dias corridos após o recebimento (neste caso, encerrado em 24/02/2026), não é mais possível fazer a devolução por arrependimento.
 > 
-> Em relação à garantia legal contra defeitos de fabricação, ela vai até 18/05/2026. Se o seu instrumento apresentou algum defeito, você pode solicitar a troca por defeito até 05/03/2026 (prazo que também já passou), mas a garantia legal continua vigente até essa data de maio.
-> 
-> Precisa de ajuda com mais alguma coisa?
+> Mas fique tranquila, a garantia legal contra defeitos de fabricação vale até 18/05/2026. Se houver algum problema com o instrumento, me avise por aqui!
 
 **Cliente:** E se o ukulele apresentar defeito?
 
+> 🔧 ferramentas: `get_order`
+
 **Assistente:**
 
-> Letícia, como o seu pedido foi entregue em 17/02/2026, o prazo de 30 dias que a loja faz a troca direta por defeito foi até 05/03/2026.
+> Para trocas por defeito de fabricação, o prazo direto com a loja era de até 30 dias após a compra (até 05/03/2026). Como já passou dessa data, você ainda está coberta pela garantia legal contra defeitos de fabricação até 18/05/2026, e o acionamento é feito diretamente com o fabricante.
 > 
-> Mas fique tranquila: você ainda está coberta pela garantia legal de 90 dias (válida até 18/05/2026) e pela garantia do fabricante. Passados os 30 dias da loja, você pode acionar a garantia diretamente com o fabricante, e nós aqui da Empório da Música podemos intermediar esse processo para te ajudar, tá bom?
-> 
-> Se precisar acionar a garantia ou tiver qualquer dúvida, é só me avisar!
+> Se precisar, nós da Empório da Música podemos intermediar esse processo para você mediante solicitação. Quer que eu registre uma solicitação para nossa equipe te ajudar com isso?
