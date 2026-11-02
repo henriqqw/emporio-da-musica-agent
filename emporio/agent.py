@@ -26,11 +26,20 @@ FALLBACK_REPLY = (
 )
 
 
+# Why a reply fell back to FALLBACK_REPLY. Only PROVIDER_ERROR says nothing about the
+# model's behaviour; evals and logs use the distinction.
+PROVIDER_ERROR = "provider_error"  # API error, timeout, rate limit
+MALFORMED_RESPONSE = "malformed_response"  # e.g. no choices from a compatible provider
+FILTERED = "filtered"  # provider content filter or model refusal
+EMPTY_REPLY = "empty_reply"
+TOOL_LIMIT = "tool_limit"
+
+
 @dataclass
 class AgentReply:
     text: str
     tools_called: list[str] = field(default_factory=list)
-    fallback: bool = False
+    fallback_reason: str | None = None  # set when text is FALLBACK_REPLY
 
 
 class Agent:
@@ -67,27 +76,36 @@ class Agent:
                     tools=self._toolbox.definitions,
                     **self._extra,
                 )
+                choice = response.choices[0]
+                message = choice.message
             except openai.APIError:
                 logger.exception("LLM request failed")
-                return _fallback(reply)
+                return _fallback(reply, PROVIDER_ERROR)
+            except Exception:  # a compatible provider sent something unexpected
+                logger.exception("malformed LLM response")
+                return _fallback(reply, MALFORMED_RESPONSE)
 
-            choice = response.choices[0]
             _log_usage(choice.finish_reason, response.usage)
-            message = choice.message
             if choice.finish_reason == "content_filter" or message.refusal:
                 logger.warning("model refused or response was filtered")
-                return _fallback(reply)
+                return _fallback(reply, FILTERED)
 
             if message.tool_calls and round_number == MAX_TOOL_ROUNDS:
                 # Never run a tool whose result the customer will not see: a complaint
                 # written here would be registered without its protocol being told.
                 logger.warning("still calling tools after %d rounds; none run", MAX_TOOL_ROUNDS)
-                return _fallback(reply)
+                return _fallback(reply, TOOL_LIMIT)
+
+            text = (message.content or "").strip()
+            if not message.tool_calls and not text:
+                # Not stored: an empty assistant turn can make providers reject the
+                # whole history, breaking every later message of the session.
+                return _fallback(reply, EMPTY_REPLY)
 
             history.append(_assistant_message(message))
             if not message.tool_calls:
-                reply.text = (message.content or "").strip()
-                return reply if reply.text else _fallback(reply)
+                reply.text = text
+                return reply
 
             for call in message.tool_calls:
                 history.append(self._run_tool(call, context, reply))
@@ -127,9 +145,9 @@ def _assistant_message(message: Any) -> dict[str, Any]:
     return {key: value for key, value in data.items() if value not in ([], {}, "")}
 
 
-def _fallback(reply: AgentReply) -> AgentReply:
+def _fallback(reply: AgentReply, reason: str) -> AgentReply:
     reply.text = FALLBACK_REPLY
-    reply.fallback = True
+    reply.fallback_reason = reason
     return reply
 
 

@@ -7,7 +7,16 @@ import httpx
 import openai
 import pytest
 
-from emporio.agent import FALLBACK_REPLY, MAX_TOOL_ROUNDS, Agent
+from emporio.agent import (
+    EMPTY_REPLY,
+    FALLBACK_REPLY,
+    FILTERED,
+    MALFORMED_RESPONSE,
+    MAX_TOOL_ROUNDS,
+    PROVIDER_ERROR,
+    TOOL_LIMIT,
+    Agent,
+)
 from emporio.catalog import Catalog
 from emporio.complaints import ComplaintStore
 from emporio.config import STORE_TZ
@@ -103,7 +112,7 @@ def test_stops_after_max_tool_rounds_without_running_the_extra_call(toolbox, tmp
     history = _history()
     reply = _agent(client, toolbox).respond(history, CONTEXT, None)
 
-    assert reply.fallback is True
+    assert reply.fallback_reason == TOOL_LIMIT
     assert reply.text == FALLBACK_REPLY
     assert len(client.requests) == MAX_TOOL_ROUNDS + 1
     assert reply.tools_called == ["search_products"] * MAX_TOOL_ROUNDS
@@ -114,15 +123,57 @@ def test_stops_after_max_tool_rounds_without_running_the_extra_call(toolbox, tmp
 
 def test_content_filter_gives_fallback(toolbox):
     reply = _agent(FakeClient(filtered_response()), toolbox).respond(_history(), CONTEXT, None)
-    assert reply.fallback is True
+    assert (reply.text, reply.fallback_reason) == (FALLBACK_REPLY, FILTERED)
 
 
-def test_empty_reply_gives_fallback(toolbox):
-    reply = _agent(FakeClient(text_response("  ")), toolbox).respond(_history(), CONTEXT, None)
-    assert reply.text == FALLBACK_REPLY
+def test_model_refusal_gives_fallback(toolbox):
+    refusal = text_response("")
+    refusal.choices[0].message.refusal = "Não posso ajudar com isso."
+    reply = _agent(FakeClient(refusal), toolbox).respond(_history(), CONTEXT, None)
+    assert reply.fallback_reason == FILTERED
+
+
+def test_empty_reply_gives_fallback_and_is_not_stored(toolbox):
+    history = _history()
+    reply = _agent(FakeClient(text_response("  ")), toolbox).respond(history, CONTEXT, None)
+    assert (reply.text, reply.fallback_reason) == (FALLBACK_REPLY, EMPTY_REPLY)
+    # an empty assistant turn could make the provider reject the rest of the session
+    assert history == _history()
 
 
 def test_api_error_gives_fallback(toolbox):
     error = openai.APIConnectionError(request=httpx.Request("POST", "https://api.test"))
     reply = _agent(FakeClient(error), toolbox).respond(_history(), CONTEXT, None)
-    assert reply.text == FALLBACK_REPLY
+    assert (reply.text, reply.fallback_reason) == (FALLBACK_REPLY, PROVIDER_ERROR)
+
+
+def test_malformed_response_gives_fallback_not_an_exception(toolbox):
+    no_choices = text_response("oi")
+    no_choices.choices = []  # some compatible providers do this
+    reply = _agent(FakeClient(no_choices), toolbox).respond(_history(), CONTEXT, None)
+    assert (reply.text, reply.fallback_reason) == (FALLBACK_REPLY, MALFORMED_RESPONSE)
+
+
+def test_crashing_tool_goes_back_as_error_and_the_turn_continues(toolbox, monkeypatch):
+    def crash(*_):
+        raise RuntimeError("bug")
+
+    monkeypatch.setattr(toolbox, "run", crash)
+    client = FakeClient(
+        tool_response("search_products", {"query": "gd20"}),
+        text_response("Tive um problema na consulta, pode repetir?"),
+    )
+    history = _history()
+    reply = _agent(client, toolbox).respond(history, CONTEXT, None)
+    assert history[2]["content"] == "ERRO: falha interna ao executar a ferramenta."
+    assert reply.fallback_reason is None
+
+
+def test_parallel_tool_calls_all_get_a_result(toolbox):
+    first = tool_response("search_products", {"query": "gd20"}, "a")
+    second = tool_response("search_products", {"query": "c40"}, "b")
+    first.choices[0].message.tool_calls += second.choices[0].message.tool_calls
+    client = FakeClient(first, text_response("Os dois estão disponíveis."))
+    history = _history()
+    _agent(client, toolbox).respond(history, CONTEXT, None)
+    assert [m.get("tool_call_id") for m in history if m["role"] == "tool"] == ["a", "b"]
