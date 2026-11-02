@@ -173,7 +173,8 @@ class Toolbox:
         return {
             "protocol": complaint.protocol,
             "response_deadline": _datetime(complaint.response_deadline),
-            "order_linked": order_linked,
+            # from the stored record: a redelivered message returns what was registered
+            "order_linked": complaint.order_id is not None,
         }
 
 

@@ -44,7 +44,11 @@ class ComplaintStore:
         order_id: int | None,
         now: datetime,
     ) -> Complaint:
-        """Store a complaint, or return the existing one for this message_id (R-CMP-5)."""
+        """Store a complaint, or return the one already stored for this message (R-CMP-5).
+
+        A message is identified by phone + message_id: in the web channel the id comes
+        from the client, so the id alone could match another customer's complaint.
+        """
         if category not in CATEGORIES:
             raise ValueError(f"unknown category: {category}")
         summary = summary.strip()
@@ -54,7 +58,7 @@ class ComplaintStore:
         with self._lock:
             existing = self._load()
             for complaint in existing:
-                if complaint.message_id == message_id:
+                if (complaint.phone, complaint.message_id) == (phone, message_id):
                     return complaint
 
             complaint = Complaint(

@@ -51,6 +51,14 @@ def test_same_message_id_never_creates_two_complaints(complaints, tmp_path):
     assert len(lines) == 1
 
 
+def test_same_message_id_from_another_phone_is_another_complaint(complaints):
+    # in the web channel message_id comes from the client and can collide
+    first = _register(complaints, "m1")
+    other = _register(complaints, "m1", phone="67999990000", order_id=None)
+    assert other.protocol != first.protocol
+    assert other.phone == "67999990000"
+
+
 @pytest.mark.parametrize(
     ("start", "deadline"),
     [

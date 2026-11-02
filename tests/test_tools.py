@@ -105,6 +105,14 @@ def test_register_complaint_links_only_own_orders(toolbox):
     assert foreign["order_linked"] is False
 
 
+def test_redelivered_complaint_returns_what_was_stored(toolbox):
+    args = {"summary": "Entrega atrasada.", "category": "atraso_entrega"}
+    first = toolbox.run("register_complaint", args | {"order_id": 8}, _context(message_id="a"))
+    # same message delivered again, the model now omits the order: stored record wins
+    again = toolbox.run("register_complaint", args, _context(message_id="a"))
+    assert again == first
+
+
 def test_register_complaint_invalid_input_is_a_tool_error(toolbox):
     with pytest.raises(ToolError):
         toolbox.run("register_complaint", {"summary": "", "category": "outro"}, _context())
