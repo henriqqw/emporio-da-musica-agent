@@ -22,6 +22,9 @@ from emporio.sessions import SessionStore
 from emporio.tools import Toolbox, ToolContext
 from emporio.whatsapp_format import sanitize
 
+LLM_TIMEOUT_SECONDS = 30
+LLM_MAX_RETRIES = 1
+
 
 @dataclass(frozen=True)
 class IncomingMessage:
@@ -74,7 +77,14 @@ def build_chat_service(
         if not settings.llm_api_key:
             # Fail at startup, not on the first customer message.
             raise RuntimeError("LLM_API_KEY is not set: copy .env.example to .env and fill it.")
-        client = openai.OpenAI(base_url=settings.llm_base_url, api_key=settings.llm_api_key)
+        client = openai.OpenAI(
+            base_url=settings.llm_base_url,
+            api_key=settings.llm_api_key,
+            # A customer on WhatsApp should get the fallback in seconds, not wait minutes
+            # while the SDK backs off on rate limits (the SDK default is 10 min, 2 retries).
+            timeout=LLM_TIMEOUT_SECONDS,
+            max_retries=LLM_MAX_RETRIES,
+        )
     store = load_store_data(settings.data_dir)
     toolbox = Toolbox(Catalog(store), OrderService(store), ComplaintStore(settings.complaints_path))
     agent = Agent(client, toolbox, settings.model, settings.reasoning_effort)
