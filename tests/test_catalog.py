@@ -31,18 +31,28 @@ def test_specific_product_by_name(catalog):
     assert result.offers[0].expired_promotions == ("Oferta Especial (12%)",)
 
 
-def test_out_of_stock_product_is_returned_with_its_status(catalog):
-    # A5
+def test_out_of_stock_product_comes_with_similar_alternatives(catalog):
+    # A5: Giannini GF-3D Dreadnought (R$ 799,90) is out of stock
     result = catalog.search(query="Giannini GF-3D")
     assert _ids(result)[0] == 96
     assert result.offers[0].availability == "esgotado"
 
+    alternatives = result.alternatives
+    assert len(alternatives) == 3
+    assert all(o.sellable and o.category == "Violões" for o in alternatives)
+    assert all("Dreadnought" in o.product.name for o in alternatives)
 
-def test_discontinued_product_is_returned_with_its_status(catalog):
-    # A6
+
+def test_discontinued_product_comes_with_similar_alternatives(catalog):
+    # A6: Shelby SN-7C 7 Cordas is discontinued
     result = catalog.search(query="Shelby SN-7C")
     assert _ids(result)[0] == 113
     assert result.offers[0].availability == "descontinuado"
+    assert all("7 Cordas" in o.product.name for o in result.alternatives)
+
+
+def test_no_alternatives_when_something_found_is_sellable(catalog):
+    assert catalog.search(query="takamine gd20").alternatives == ()
 
 
 def test_alternatives_by_type(catalog):

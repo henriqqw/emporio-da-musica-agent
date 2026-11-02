@@ -127,10 +127,13 @@ class Toolbox:
             max_price=args.get("max_price"),
             include_unavailable=bool(args.get("include_unavailable", False)),
         )
-        return {
+        data: dict[str, Any] = {
             "total_found": result.total_found,
             "products": [_offer_json(offer) for offer in result.offers],
         }
+        if result.alternatives:
+            data["alternatives"] = [_offer_json(offer) for offer in result.alternatives]
+        return data
 
     def _get_order(self, args: dict[str, Any], context: ToolContext) -> dict[str, Any]:
         lookup = self._orders.lookup(

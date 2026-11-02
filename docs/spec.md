@@ -110,6 +110,12 @@ names a specific product, unavailable matches are always returned so the agent c
 Ordering: best match first, then card price ascending. Limit 8; the result includes
 `total_found` so the agent can ask the customer to narrow down.
 
+When nothing found is sellable (e.g. the customer named an out-of-stock or discontinued
+model), the result also carries `alternatives`: up to 3 sellable products of the same
+category, ranked by shared type words in the name ("dreadnought", "7 cordas", "nylon";
+brand, model code and color ignored) and then by closest price. Deterministic, so a
+small model does not need a second search to follow R-CAT-3.
+
 Output per product:
 
 ```json

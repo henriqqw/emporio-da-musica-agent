@@ -42,6 +42,13 @@ def test_search_products_returns_prices_from_code(toolbox):
     assert gd20["promotion"] is None
 
 
+def test_search_products_includes_alternatives_for_unavailable(toolbox):
+    result = toolbox.run("search_products", {"query": "Giannini GF-3D"}, _context())
+    assert result["products"][0]["availability"] == "esgotado"
+    assert len(result["alternatives"]) == 3
+    assert "alternatives" not in toolbox.run("search_products", {"query": "gd20"}, _context())
+
+
 def test_search_products_needs_a_filter(toolbox):
     with pytest.raises(ToolError):
         toolbox.run("search_products", {}, _context())

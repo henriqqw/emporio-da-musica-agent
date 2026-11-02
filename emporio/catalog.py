@@ -8,6 +8,7 @@ from emporio.data import Product, Promotion, StoreData
 from emporio.pricing import PriceQuote, quote
 
 SEARCH_LIMIT = 8
+ALTERNATIVES_LIMIT = 3
 LOW_STOCK_THRESHOLD = 2  # 1-2 units left -> "últimas unidades"
 _STOPWORDS = {
     *("a", "o", "as", "os", "e", "de", "da", "do", "das", "dos", "em", "um", "uma"),
@@ -32,6 +33,8 @@ class Offer:
 class SearchResult:
     offers: tuple[Offer, ...]
     total_found: int
+    # Filled only when nothing found is sellable: similar products the store can sell now.
+    alternatives: tuple[Offer, ...] = ()
 
 
 def availability(product: Product) -> str:
@@ -108,7 +111,33 @@ class Catalog:
 
         scored.sort(key=lambda e: (-e[0], not e[2].sellable, e[2].price.card_price))
         offers = tuple(offer for _, _, offer in scored)
-        return SearchResult(offers=offers[:SEARCH_LIMIT], total_found=len(offers))
+        alternatives = ()
+        if offers and not any(offer.sellable for offer in offers):
+            alternatives = tuple(self.alternatives(offers[0].product))
+        return SearchResult(
+            offers=offers[:SEARCH_LIMIT], total_found=len(offers), alternatives=alternatives
+        )
+
+    def alternatives(self, product: Product, limit: int = ALTERNATIVES_LIMIT) -> list[Offer]:
+        """Sellable products of the same category, most similar first (R-CAT-3).
+
+        Similarity = type words shared with the product's name ("dreadnought", "7",
+        "cordas", "nylon"...), then the closest price.
+        """
+        wanted = _type_words(product)
+        candidates = [
+            offer
+            for other in self._store.products.values()
+            if other.category_id == product.category_id and other.id != product.id
+            if (offer := self.offer(other)).sellable
+        ]
+        candidates.sort(
+            key=lambda o: (
+                -len(wanted & _type_words(o.product)),
+                abs(o.price.card_price - product.price),
+            )
+        )
+        return candidates[:limit]
 
     def _in_category(self, category: str | None) -> list[Product]:
         products = list(self._store.products.values())
@@ -142,6 +171,24 @@ def _normalize(text: str) -> str:
 def _words(text: str) -> list[str]:
     """Letters and digits split apart, so "GD20", "gd-20" and "gd 20" all match."""
     return re.findall(r"[a-z]+|[0-9]+", _normalize(text))
+
+
+def _type_words(product: Product) -> set[str]:
+    """Words of the name that describe the kind of instrument.
+
+    Drops the brand (first word), model codes ("GF-3D", "KA-15S") and the color, which
+    say nothing about what makes two instruments interchangeable.
+    "Giannini GF-3D Dreadnought Sunburst" -> {"dreadnought"}.
+    """
+    _brand, *rest = product.name.split()
+    color = _normalize(product.specs.get("color", ""))
+    words = set()
+    for token in rest:
+        is_model_code = "-" in token or (re.search(r"\d", token) and re.search(r"\D", token))
+        word = _normalize(token)
+        if not is_model_code and word != color:
+            words.add(word)
+    return words
 
 
 def _tokens(query: str) -> list[str]:
