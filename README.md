@@ -115,7 +115,8 @@ against the acceptance table in [spec §10](docs/spec.md#10-acceptance-scenarios
 - LLM behaviour is checked by recorded runs and an adversarial eval reviewed by hand →
   automate the evals in CI on a schedule.
 - Free-tier quotas are small and Google may use free-tier prompts → a small paid model.
-- Sessions in memory, single process → Redis behind `SessionStore`, async endpoints.
+- Sessions in memory, single process, expired ones never evicted; `/chat` has no rate
+  limit → Redis with TTL behind `SessionStore`, a rate limit per phone, async endpoints.
 - Complaints go to a local JSONL file and nobody is notified → helpdesk integration
   (`ComplaintStore` is the only class to change) and bot pause on handoff.
 - Small wording slips remain (e.g. calling the order date the dispatch date); every
