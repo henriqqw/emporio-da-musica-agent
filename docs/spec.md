@@ -224,7 +224,7 @@ line of defence.
 |---|---|---|
 | `LLM_BASE_URL` | Gemini's OpenAI-compatible endpoint | provider (any OpenAI-compatible API) |
 | `LLM_API_KEY` | — (required) | provider credentials |
-| `LLM_MODEL` | a Gemini Flash model (free tier) | model id |
+| `LLM_MODEL` | `gemini-flash-lite-latest` (free tier) | model id |
 | `LLM_REASONING_EFFORT` | unset | optional; sent only when set |
 | `REFERENCE_DATE` | real date | "today" for date logic (R-DATE-1) |
 | `SESSION_TTL_MINUTES` | `30` | session inactivity timeout |
@@ -274,7 +274,7 @@ persistence of sessions, authentication of the demo UI, WhatsApp integration
 - **Q2 (decided)** Complaints are registered by a third tool, `register_complaint`,
   the single write operation (section 5.3, R-CMP-*).
 - **Q3 (decided, revised)** Model and provider are configuration (architecture ADR-03
-  and ADR-13). Any OpenAI-compatible API works; the default is a free-tier Gemini Flash
+  and ADR-13). Any OpenAI-compatible API works; the default is a free-tier Gemini Flash-Lite
   model so evaluators run at zero cost. The hard parts (prices, dates, identification,
   protocol) are deterministic code, so a small model is enough; the recorded examples
   state which model produced them. For production a small paid model (e.g. Claude
