@@ -35,7 +35,7 @@ a new data source is one change at the bottom.
 |---|---|---|
 | Language | Python | 3.12 |
 | LLM access | any OpenAI-compatible Chat Completions API, official `openai` SDK | pinned |
-| Model | configuration; default: Gemini Flash on Google's free tier (ADR-03) | — |
+| Model | configuration; default: Gemini Flash-Lite on Google's free tier (ADR-03) | — |
 | HTTP | FastAPI + uvicorn | 0.162 / 0.54 |
 | Demo UI | one static HTML file, plain JavaScript | — |
 | Config | environment variables, `python-dotenv` for local `.env` | 1.2 |
@@ -87,18 +87,44 @@ Support chat is high-volume and latency-sensitive; the common industry pattern i
 small, cheap default model. Evaluators must be able to run the project without paying.
 
 **Decision.** The model is three env vars (`LLM_BASE_URL`, `LLM_MODEL`, `LLM_API_KEY`).
-The default in `.env.example` is a Gemini Flash model on Google's free tier (no card),
-with ready-made blocks for OpenAI, Claude (Anthropic's OpenAI-compatible endpoint or
-OpenRouter), Groq and a local Ollama. Deterministic code does the parts where a small
-model would err (arithmetic, dates, identification, protocol numbers), and tool results
-carry pre-decided fields (e.g. `pix_price: null` when a promotion is active) so the model
+The default is **Gemini Flash-Lite** (`gemini-flash-lite-latest`) on Google's free tier
+(no card), with ready-made blocks in `.env.example` for Mistral, Groq, OpenRouter,
+OpenAI, Claude and a local Ollama. Deterministic code does the parts where a small model
+would err (arithmetic, dates, identification, protocol numbers), and tool results carry
+pre-decided fields (e.g. `pix_price: null` when a promotion is active) so the model
 mostly writes the reply.
+
+**How the default was chosen (November 2026).** Two measurements drove it:
+1. Every request carries ~4.4k tokens of instructions and tool definitions (the whole
+   manual is in the prompt, ADR-01); with history and a search result a request reaches
+   5–8k tokens. A free tier must allow that many *tokens per minute*, not only requests.
+2. A conversation turn that looks something up costs 2 requests (tool call + answer); the
+   five recorded scenarios need ~30. The first attempt, on `gemini-flash-latest`
+   (Gemini 3.8 Flash), exhausted its free quota of **20 requests/day** mid-run (HTTP 429).
+
+| Free option | Quota (third-party sources, they disagree and change often) | Verdict |
+|---|---|---|
+| **Gemini Flash-Lite** | ~500–1,000 req/day, ~15 RPM, ~250k tokens/min | **Chosen**: fits the prompt size and a full scenario run; no card; works with the same Google key. |
+| Gemini Flash (3.8 / 3.6) | 20 req/day | Rejected: exhausted by one scenario run. |
+| Groq (gpt-oss-120b) | 30 RPM, ~1,000 req/day, but ~8k tokens/min and ~200k tokens/day | Rejected as default: very fast and good at tool use, but with our prompt size ≈ 1 request/min and ~30/day. |
+| Mistral (Experiment plan) | ~1 req/s, ~1B tokens/month | Best high-volume alternative: needs phone verification and trains on data by default (opt-out). |
+| OpenRouter `:free` models | 20 RPM, 50 req/day | Rejected: too few requests; tool calling fails on some free models. |
+| Cerebras | free tier replaced by one-time trial credits in 2026 | Rejected: not permanently free. |
+| Ollama (local) | unlimited | Alternative for offline use; slow on modest GPUs. |
+
+Quality trade-off: a Flash-Lite model is weaker than larger ones at multi-step tool use
+(older public tau-bench numbers put Flash-Lite well below gpt-oss-120b; no 2026 figures
+found). The design limits the impact (ADR-04), and the acceptance scenarios are run on it
+before the examples are recorded; if it fails, the prompt is fixed first, then Mistral is
+the next candidate.
 
 **Consequences.** Anyone can run the agent at zero cost. Behaviour still depends on the
 model: the README lists the models the acceptance scenarios were actually run on instead
-of promising "works with everything". For production, a small paid model with stable
-quotas (e.g. Claude Haiku 5.5, GPT mini class) is the recommendation; Google's free tier
-may use prompts for product improvement, acceptable for fictional demo data only.
+of promising "works with everything". Free quotas are per Google project and reset daily
+(midnight Pacific); the live numbers for an account are at aistudio.google.com/rate-limit.
+For production, a small paid model with stable quotas (e.g. Claude Haiku 5.5, a GPT mini
+class model) is the recommendation; Google's free tier may use prompts to improve its
+products, acceptable for fictional demo data only.
 
 ### ADR-04 Deterministic domain, LLM only for language
 
