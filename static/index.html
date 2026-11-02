@@ -4,61 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Empório da Música — Assistente</title>
-  <style>
-    :root {
-      --bg: #efeae2; --panel: #ffffff; --header: #1f3a34; --header-text: #ffffff;
-      --mine: #d9fdd3; --theirs: #ffffff; --text: #111b21; --muted: #667781;
-      --border: #d1d7db; --accent: #1f7a5c;
-    }
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --bg: #0b141a; --panel: #111b21; --header: #1f2c33; --header-text: #e9edef;
-        --mine: #005c4b; --theirs: #202c33; --text: #e9edef; --muted: #8696a0;
-        --border: #2a3942; --accent: #00a884;
-      }
-    }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0; height: 100dvh; display: flex; flex-direction: column;
-      font: 15px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-      background: var(--bg); color: var(--text);
-    }
-    header { background: var(--header); color: var(--header-text); padding: 12px 16px; }
-    header h1 { margin: 0; font-size: 17px; }
-    header p { margin: 2px 0 0; font-size: 13px; opacity: .8; }
-    .identity {
-      display: flex; flex-wrap: wrap; gap: 8px; align-items: end;
-      padding: 10px 16px; background: var(--panel); border-bottom: 1px solid var(--border);
-    }
-    .identity label { display: flex; flex-direction: column; font-size: 12px; color: var(--muted); }
-    input, button { font: inherit; }
-    input {
-      padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px;
-      background: var(--panel); color: var(--text); min-width: 0;
-    }
-    button {
-      padding: 8px 14px; border: 0; border-radius: 8px; cursor: pointer;
-      background: var(--accent); color: #fff;
-    }
-    button.secondary { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
-    button:disabled { opacity: .5; cursor: default; }
-    #messages {
-      flex: 1; overflow-y: auto; padding: 16px;
-      display: flex; flex-direction: column; gap: 6px;
-    }
-    .msg {
-      max-width: min(80%, 560px); padding: 7px 10px; border-radius: 8px;
-      white-space: pre-wrap; overflow-wrap: anywhere; box-shadow: 0 1px .5px rgba(0,0,0,.13);
-    }
-    .msg.mine { align-self: flex-end; background: var(--mine); }
-    .msg.theirs { align-self: flex-start; background: var(--theirs); }
-    .msg.status { align-self: center; background: transparent; box-shadow: none; color: var(--muted); font-size: 13px; }
-    form#composer {
-      display: flex; gap: 8px; padding: 10px 16px;
-      background: var(--panel); border-top: 1px solid var(--border);
-    }
-    form#composer input { flex: 1; }
-  </style>
+  <link rel="stylesheet" href="/static/app.css">
 </head>
 <body>
   <header>
@@ -83,82 +29,6 @@
     <button id="send">Enviar</button>
   </form>
 
-  <script>
-    const $ = (id) => document.getElementById(id);
-    const messages = $("messages");
-
-    function escapeHtml(text) {
-      return text.replace(/[&<>"']/g, (c) => ({
-        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
-      })[c]);
-    }
-
-    // WhatsApp formatting: *bold* and _italic_ (applied after escaping).
-    function formatWhatsApp(text) {
-      return escapeHtml(text)
-        .replace(/\*([^*\n]+)\*/g, "<strong>$1</strong>")
-        .replace(/(^|[\s(])_([^_\n]+)_/g, "$1<em>$2</em>");
-    }
-
-    function addMessage(kind, text) {
-      const bubble = document.createElement("div");
-      bubble.className = `msg ${kind}`;
-      bubble.innerHTML = kind === "theirs" ? formatWhatsApp(text) : escapeHtml(text);
-      messages.append(bubble);
-      messages.scrollTop = messages.scrollHeight;
-      return bubble;
-    }
-
-    async function postJson(url, body) {
-      const response = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      if (!response.ok && response.status !== 204) {
-        const detail = await response.json().catch(() => ({}));
-        // validation errors (422) come as a list; others, like the rate limit (429), as text
-        const message = Array.isArray(detail.detail) ? detail.detail[0]?.msg : detail.detail;
-        throw new Error(message || `Erro ${response.status}`);
-      }
-      return response.status === 204 ? null : response.json();
-    }
-
-    $("composer").addEventListener("submit", async (event) => {
-      event.preventDefault();
-      const text = $("text").value.trim();
-      const phone = $("phone").value.trim();
-      if (!text) return;
-      if (!phone) { addMessage("status", "Informe um número de WhatsApp para simular o cliente."); return; }
-
-      addMessage("mine", text);
-      $("text").value = "";
-      $("send").disabled = true;
-      const typing = addMessage("status", "digitando…");
-      try {
-        const data = await postJson("/chat", {
-          phone, text, customer_name: $("name").value.trim() || null,
-          message_id: crypto.randomUUID(),
-        });
-        typing.remove();
-        addMessage("theirs", data.reply);
-      } catch (error) {
-        typing.remove();
-        addMessage("status", error.message);
-      } finally {
-        $("send").disabled = false;
-        $("text").focus();
-      }
-    });
-
-    $("reset").addEventListener("click", async () => {
-      const phone = $("phone").value.trim();
-      messages.replaceChildren();
-      if (phone) {
-        try { await postJson("/chat/reset", { phone }); } catch (error) { addMessage("status", error.message); }
-      }
-      addMessage("status", "Nova conversa iniciada.");
-    });
-  </script>
+  <script src="/static/app.js"></script>
 </body>
 </html>

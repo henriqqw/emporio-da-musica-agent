@@ -8,10 +8,11 @@ module doing the same with the provider's payload.
 import logging
 import time
 import uuid
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, field_validator
 
 from emporio.config import PROJECT_ROOT, load_settings
@@ -19,7 +20,19 @@ from emporio.phone import is_valid_phone, normalize_phone
 from emporio.rate_limit import RateLimiter
 from emporio.service import ChatService, IncomingMessage, build_chat_service
 
-INDEX_HTML = PROJECT_ROOT / "static" / "index.html"
+STATIC_DIR = PROJECT_ROOT / "static"
+INDEX_HTML = STATIC_DIR / "index.html"
+# Defence in depth behind the page's HTML escaping: only the page's own files may run
+# or style it, it may only call this API, and no other site may frame it (clickjacking).
+SECURITY_HEADERS = {
+    "Content-Security-Policy": (
+        "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; "
+        "connect-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"
+    ),
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "no-referrer",
+}
 # Per minute. Generous for a person typing; stops a script brute-forcing the e-mail of
 # a known phone or burning the LLM quota. Checked before the agent, so a rejected
 # message costs no LLM call.
@@ -58,6 +71,15 @@ def create_app(
     app = FastAPI(title="Empório da Música — assistente virtual")
     per_phone = RateLimiter(MESSAGES_PER_PHONE, window_seconds=60, clock=clock)
     per_ip = RateLimiter(MESSAGES_PER_IP, window_seconds=60, clock=clock)
+    app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
+    @app.middleware("http")
+    async def security_headers(
+        request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
+        response = await call_next(request)
+        response.headers.update(SECURITY_HEADERS)
+        return response
 
     @app.get("/", include_in_schema=False)
     def index() -> FileResponse:

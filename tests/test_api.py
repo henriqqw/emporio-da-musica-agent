@@ -84,3 +84,21 @@ def test_rate_limit_window_resets(settings):
     assert client.post("/chat", json={"phone": PHONE, "text": "oi"}).status_code == 429
     clock.now += 60
     assert client.post("/chat", json={"phone": PHONE, "text": "oi"}).status_code == 200
+
+
+@pytest.mark.parametrize("path", ["/", "/static/app.js", "/health"])
+def test_security_headers_on_every_response(api, path):
+    headers = api.get(path).headers
+    csp = headers["content-security-policy"]
+    assert "script-src 'self'" in csp  # no inline or third-party scripts
+    assert "frame-ancestors 'none'" in csp
+    assert headers["x-content-type-options"] == "nosniff"
+    assert headers["x-frame-options"] == "DENY"
+
+
+def test_page_has_no_inline_script_or_style(api):
+    # the CSP blocks inline code, so the page must load everything from files
+    page = api.get("/").text
+    assert "<script>" not in page and "<style>" not in page
+    assert api.get("/static/app.js").status_code == 200
+    assert api.get("/static/app.css").status_code == 200
