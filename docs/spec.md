@@ -273,6 +273,35 @@ LLM behaviour.
 | A15 | Any reply | WhatsApp format: no headings/tables/`**`, ≤ 1 question. |
 | A16 | After A8: "Que absurdo, quero reclamar desse atraso" | empathises; summarises and asks for confirmation; on "sim" calls `register_complaint(category=atraso_entrega, order_id=8)`; replies with protocol and deadline (registered Wed 2026-03-25 → Thu 2026-03-26, same time). Same `message_id` twice → one record. |
 
+### Traceability (final audit)
+
+Deterministic parts are covered by unit tests; LLM behaviour by recorded transcripts
+(`docs/examples/`, reviewed by hand) or, where marked, a live check during the audit
+(Gemini Flash-Lite, not recorded).
+
+| # | Unit tests | Live evidence |
+|---|---|---|
+| A1 | `test_catalog::test_browse_by_category_and_price_shows_only_sellable` | `catalogo_e_precos.md` |
+| A2 | `test_pricing::test_no_promotion_gives_pix_discount_and_installments`, `test_tools::test_search_products_returns_prices_from_code` | `catalogo_e_precos.md` |
+| A3 | `test_catalog::test_specific_product_by_name` (`expired_promotions`) | `catalogo_e_precos.md` |
+| A4 | `test_pricing::test_active_promotion_replaces_pix_discount` | `estoque_e_promocao_ativa.md` |
+| A5 | `test_catalog::test_out_of_stock_product_comes_with_similar_alternatives` | `estoque_e_promocao_ativa.md` |
+| A6 | `test_catalog::test_discontinued_product_comes_with_similar_alternatives` | live check (three 7-string guitars suggested) |
+| A7 | `test_prompt::test_static_part_contains_the_whole_manual` | `informacoes_e_fora_de_escopo.md` |
+| A8 | `test_orders::test_identified_customer_sees_shipped_order_flagged_late` | `pedido_atrasado_e_reclamacao.md` |
+| A9 | `test_orders::test_wrong_email_reveals_nothing`, `test_tools::test_get_order_uses_phone_from_session` | `devolucao_por_arrependimento.md` |
+| A10 | `test_orders::test_after_sales_windows_for_delivered_order` | `devolucao_por_arrependimento.md` |
+| A11 | — (prompt + manual) | `informacoes_e_fora_de_escopo.md` |
+| A12 | — (prompt) | `informacoes_e_fora_de_escopo.md` |
+| A13 | `test_catalog::test_empty_category_returns_nothing`, `test_tools::test_empty_search_lists_categories_in_stock` | live check (lists only categories in stock) |
+| A14 | `test_pricing::test_combined_payment_only_above_2000`, `test_tools::test_combined_payment_is_decided_by_code` | live check (explains the R$ 2.000 rule) |
+| A15 | `test_whatsapp_format` | all transcripts (manual review) |
+| A16 | `test_complaints`, `test_tools::test_register_complaint_links_only_own_orders`, `test_service::test_tools_receive_phone_and_message_id_from_the_channel` | `pedido_atrasado_e_reclamacao.md` |
+
+Gaps found by the audit and fixed: A14's rule was implemented but never reached the model
+(now `combined_payment_allowed`); A13 claimed wind instruments the data does not have (now
+`categories_in_stock`). Accepted minor wording issues are listed in the README limitations.
+
 ## 11. Out of scope
 
 Placing/cancelling orders, opening returns, freight quotes outside Campo Grande,

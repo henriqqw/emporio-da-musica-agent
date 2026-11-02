@@ -22,11 +22,16 @@ Conventional Commits messages, no force-push. Decisions behind the steps are in
 | 13 | `feat: agent tool-use loop` | `agent.py` | tests with a fake client: tool round-trip, max rounds, refusal, API error | done |
 | 14 | `feat: channel-agnostic chat service` | `service.py` | tests: session wiring, phone normalization | done |
 | 15 | `feat: demo web channel` | `api.py`, `static/index.html` | `TestClient` tests; manual check in the browser | done |
-| 16 | `feat: validate tool arguments in code` | `tools.py` | tests: wrong types, unknown enum values, out-of-range numbers rejected | |
-| 17 | `refactor: OpenAI-compatible LLM client` (ADR-13) | `config.py`, `prompt.py`, `tools.py`, `agent.py`, `service.py`, fakes, `.env.example`, requirements | all tests green; no `anthropic` import left | |
-| 18 | `docs: example conversations` | `scripts/run_scenarios.py` + `docs/examples/*.md` | scenarios reviewed by hand against spec §10; transcripts are real runs and name the model | |
-| 19 | `docs: README` | setup per provider, decisions, assumptions, limitations, AI-assistant workflow, WhatsApp adapter | follows the case's README checklist | |
-| 20 | `fix: audit against spec` | walk spec sections 2–10 and the acceptance table, fix gaps | every scenario traced to a test or an example | |
+| 16 | `feat: validate tool arguments in code` | `tools.py` | tests: wrong types, unknown enum values, out-of-range numbers rejected | done |
+| 17 | `refactor: OpenAI-compatible LLM client` (ADR-13) | `config.py`, `prompt.py`, `tools.py`, `agent.py`, `service.py`, fakes, `.env.example`, requirements | all tests green; no `anthropic` import left | done |
+| 18 | `docs: example conversations` | `scripts/run_scenarios.py` + `docs/examples/*.md` | scenarios reviewed by hand against spec §10; transcripts are real runs and name the model | done |
+| 19 | `docs: README` | setup per provider, decisions, assumptions, limitations, AI-assistant workflow, WhatsApp adapter | follows the case's README checklist | done |
+| 20 | `fix: audit against spec` | walk spec sections 2–10 and the acceptance table, fix gaps | every scenario traced to a test or an example | done |
 
 Step 18 needs an API key for any OpenAI-compatible provider in `.env` (a free Gemini
 key is enough).
+
+Beyond the plan, the live runs and the audit added fix commits, each traced to what
+exposed it: free-tier quota and latency, product alternatives, prompt rules for returns
+and complaints, pre-formatted money and dates, combined payment in code (A14) and
+categories in stock (A13). The audit's traceability table is in spec section 10.
