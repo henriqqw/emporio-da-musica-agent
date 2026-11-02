@@ -18,8 +18,9 @@ Customer ─▶ channel adapter ─▶ ChatService ─▶ Agent (tool-use loop) 
 
 - **Runs at zero cost** on Google Gemini's free tier, or on any OpenAI-compatible provider
   (OpenAI, Mistral, Groq, OpenRouter, Anthropic, local Ollama) by changing three env vars.
-- **131 tests, no API key needed** (the LLM is replaced by a fake built from the SDK's real
-  types); CI runs ruff + pytest on every push.
+- **Tests need no API key** (the LLM is replaced by a fake built from the SDK's real types);
+  CI runs ruff + pytest on every push. Every acceptance scenario is traced to a test or a
+  live run in [spec §10](docs/spec.md#traceability-final-audit).
 - **Spec-driven**: [spec](docs/spec.md), [business rules](docs/business-rules.md),
   [architecture and decision records](docs/architecture.md), [plan](docs/plan.md) were
   written and reviewed before the code; the git history follows the plan in small commits.
@@ -258,6 +259,7 @@ in [docs/business-rules.md](docs/business-rules.md). The main ones:
 | No holiday calendar; freight outside Campo Grande cannot be quoted (no rate table). | Holiday calendar; integrate a freight-quote API. |
 | The demo UI trusts the phone typed in the page. | WhatsApp provides an authenticated sender number. |
 | "One question per message" and tone are enforced by the prompt only. | Covered by the automated evals above. |
+| Small wording slips remain in recorded runs (e.g. the legal warranty described as counted from purchase while the date given is correctly counted from receipt). Every number and date comes from code. | Evals with assertions on key phrases; a slightly larger model if needed. |
 
 ## WhatsApp: how it would plug in
 
@@ -329,5 +331,5 @@ static/index.html     demo chat page
 scripts/run_scenarios.py  records the example conversations against the live model
 data/                 store data provided by the case
 docs/                 spec, business rules, architecture (ADRs), plan, examples
-tests/                131 tests, no network or API key
+tests/                unit tests, no network or API key
 ```
