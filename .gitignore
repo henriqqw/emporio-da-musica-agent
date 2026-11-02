@@ -1,6 +1,9 @@
 # Secrets
 .env
 
+# Runtime data (complaint log)
+var/
+
 # Python
 __pycache__/
 *.py[cod]

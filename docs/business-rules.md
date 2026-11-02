@@ -138,7 +138,7 @@ Windows are computed by code from the reference date and returned by the order t
   (trastes, cordas, feltros, palhetas), misuse, extreme weather, third-party repairs,
   cosmetic damage that doesn't affect function.
 - **R-RET-5 [A]** The agent explains eligibility and next steps; it does not open a return
-  (tools are read-only). The customer is directed to the team to proceed.
+  (the order tools are read-only). The customer is directed to the team to proceed.
 - Orders that are not `delivered` have no return window yet; `cancelled` orders have none.
 
 ## 7. Tone and conversation
@@ -150,8 +150,8 @@ Windows are computed by code from the reference date and returned by the order t
 - **R-TONE-3 [A]** WhatsApp format: short plain text, only `*bold*` and `_italic_`,
   simple lists with "•" or numbers allowed, no tables, no headings, no Markdown links,
   at most one question per message.
-- **R-TONE-4 [M]** Complaints: listen with empathy; the manual says register and forward
-  to the person in charge, return within 24 business hours. See open question Q2.
+- **R-TONE-4 [M]** Complaints: listen with empathy, register, forward to the person in
+  charge; return within 24 business hours. See section 9.
 - **R-PRIV-1 [M]** LGPD: data used only for orders, communication and (with consent)
   marketing; never shared with third parties for marketing; the customer can ask for
   deletion via WhatsApp or e-mail.
@@ -162,3 +162,26 @@ Windows are computed by code from the reference date and returned by the order t
   date is later. Date-dependent logic (return windows, late deliveries, "today") uses
   `REFERENCE_DATE`; `.env.example` sets `2026-03-25` so the dataset is coherent. If unset,
   the real current date (America/Campo_Grande) is used.
+
+## 9. Complaints
+
+The only write the agent performs: the manual explicitly asks to register complaints,
+and saying "the team will get back to you" without a record would be an empty promise.
+
+- **R-CMP-1 [M/A]** A complaint is registered only after the agent has summarised it
+  back to the customer and the customer agreed. Questions, doubts and return requests
+  that the policy already answers are not complaints.
+- **R-CMP-2 [A]** The record holds the minimum needed (LGPD): protocol, phone (from the
+  channel, never from the model), optional order id, category, a short summary written
+  by the agent, creation time and response deadline. Not the whole conversation.
+- **R-CMP-3 [A]** Protocol: `REC-YYYYMMDD-NNNN` (date of registration + sequence of that
+  day).
+- **R-CMP-4 [A]** "24 horas úteis" = 24 hours counted only on Monday–Friday (weekends
+  skipped; holidays are not known). Friday 15:00 → Monday 15:00; Saturday 10:00 →
+  Tuesday 00:00. Computed by code.
+- **R-CMP-5 [A]** Idempotent per `message_id`: the same incoming message never opens two
+  complaints (WhatsApp may redeliver webhooks).
+- **R-CMP-6 [A]** The agent may only say the complaint was registered after the tool
+  returned a protocol, and gives the protocol and the deadline to the customer.
+- **R-CMP-7 [A]** Real-time notification of the team and pausing the bot in that
+  conversation are out of scope (documented as next steps).

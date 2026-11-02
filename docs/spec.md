@@ -24,7 +24,7 @@ Production channel: WhatsApp (not implemented). Delivered channel: a demo web ch
 | I5 | Return / exchange / warranty | "Me arrependi, posso devolver?" | `get_order` + manual | R-RET-*, R-WAR-1 |
 | I6 | Store info (address, hours, contacts) | "Qual o endereço?" | manual | R-INFO-* |
 | I7 | Payment / installments / shipping policy | "Parcela em quantas vezes?" | manual (+ tool for a specific product) | R-PAY-*, R-SHIP-* |
-| I8 | Complaint | "Meu pedido atrasou, que absurdo" | `get_order` + manual | R-TONE-4, R-ORD-4 |
+| I8 | Complaint | "Meu pedido atrasou, que absurdo" | `get_order` + `register_complaint` | R-TONE-4, R-ORD-4, R-CMP-* |
 | I9 | Accessories | "Vocês vendem cordas?" | manual | R-CAT-5 |
 | I10 | Out of scope | "Me ajuda com a lição de física?" | — | R-CAT-6 |
 | I11 | Greeting / small talk / closing | "Oi!" / "Valeu!" | — | R-TONE-2 |
@@ -81,7 +81,10 @@ id) → `ChatService.handle` → send `OutgoingMessage.text` via the provider AP
 
 ## 5. Tools
 
-Both read-only, defined with JSON Schema and `strict: true`. Results are compact JSON.
+Three tools, defined with JSON Schema and `strict: true`. `search_products` and
+`get_order` are read-only; `register_complaint` is the single write (R-CMP-*).
+Session data (phone, `message_id`) is injected by the handler, never taken from the
+model. Results are compact JSON.
 Money values are numbers in BRL rounded to 2 decimals (half-up); the prompt tells the
 model to write them as `R$ 1.234,56`.
 
@@ -159,6 +162,32 @@ The customer's first name is included so the agent can greet them.
 Once identified in a session, the agent may call `get_order` again with the same e-mail
 without asking again (the e-mail stays in history; the check still runs every call).
 
+### 5.3 `register_complaint`
+
+Input: `summary` (string, required, ≤ 500 chars, written by the agent in pt-BR),
+`category` (enum: `atraso_entrega`, `produto_com_defeito`, `atendimento`, `cobranca`,
+`outro`), `order_id` (integer, optional).
+Injected by the handler: `phone`, `message_id`, current time.
+
+Behaviour:
+1. If a complaint with this `message_id` already exists → return it (R-CMP-5).
+2. If `order_id` is given it must belong to a customer with this phone; otherwise it is
+   dropped from the record (the complaint is still registered) and the result says so.
+   The complaint does not require prior e-mail identification: anyone may complain, and
+   nothing personal is returned.
+3. Compute protocol (R-CMP-3) and deadline (R-CMP-4), append one JSON line to
+   `COMPLAINTS_PATH`, return:
+
+```json
+{"protocol": "REC-20260325-0001", "response_deadline": "2026-03-26T14:30",
+ "order_linked": true}
+```
+
+Storage lives in `complaints.py` (`ComplaintStore`: `find_by_message_id`, `add`) on a
+JSONL file — the one place to change to send tickets to a real helpdesk instead.
+Prompt rules: confirm the summary with the customer before calling; only claim the
+complaint was registered after a protocol came back; give protocol and deadline.
+
 ## 6. Prompt strategy
 
 - **Static system block** (cached with `cache_control`): persona and tone (R-TONE-*),
@@ -192,6 +221,7 @@ line of defence.
 | `REFERENCE_DATE` | real date | "today" for date logic (R-DATE-1) |
 | `SESSION_TTL_MINUTES` | `30` | session inactivity timeout |
 | `DATA_DIR` | `./data` | CSV location |
+| `COMPLAINTS_PATH` | `./var/complaints.jsonl` | complaint log (git-ignored) |
 
 ## 9. Layout
 
@@ -202,7 +232,8 @@ emporio/
   pricing.py          pure: promo, PIX, installments
   catalog.py          product search + availability
   orders.py           identification, status labels, after-sales windows
-  tools.py            tool schemas + dispatch (thin; calls catalog/orders)
+  complaints.py       complaint store (JSONL), protocol and deadline
+  tools.py            tool schemas + dispatch (thin; calls catalog/orders/complaints)
   prompt.py           system prompt builder
   agent.py            LLM loop (depends on an injected Anthropic client)
   sessions.py         in-memory session store with TTL
@@ -215,7 +246,7 @@ tests/
 docs/ (spec, business rules, plan, examples/)
 ```
 
-Dependencies point inward: `api → service → agent → tools → catalog/orders → pricing/data`.
+Dependencies point inward: `api → service → agent → tools → catalog/orders/complaints → pricing/data`.
 Nothing below `service` imports FastAPI; nothing below `agent` imports the SDK.
 
 ## 10. Acceptance scenarios
@@ -241,20 +272,19 @@ LLM behaviour.
 | A13 | "Vocês têm saxofone?" | category has no products → says so; does not invent. |
 | A14 | "Dá pra pagar metade no PIX e metade no cartão um ukulele de R$ 359?" | combination only above R$ 2.000. |
 | A15 | Any reply | WhatsApp format: no headings/tables/`**`, ≤ 1 question. |
+| A16 | After A8: "Que absurdo, quero reclamar desse atraso" | empathises; summarises and asks for confirmation; on "sim" calls `register_complaint(category=atraso_entrega, order_id=8)`; replies with protocol and deadline (registered Wed 2026-03-25 → Thu 2026-03-26, same time). Same `message_id` twice → one record. |
 
 ## 11. Out of scope
 
 Placing/cancelling orders, opening returns, freight quotes outside Campo Grande,
-payment links, human handoff integration, persistence, authentication of the demo UI,
-WhatsApp integration (documented only), multi-language.
+payment links, real-time team notification and pausing the bot after a complaint,
+persistence of sessions, authentication of the demo UI, WhatsApp integration
+(documented only), multi-language.
 
-## 12. Open questions (need your decision)
+## 12. Decisions
 
-- **Q1** Phone conflict (R-INFO-2): OK with phone 3341-4444 / WhatsApp 3321-4500?
-- **Q2** Complaints (R-TONE-4): with read-only tools the agent cannot "register and
-  forward". Proposal: keep two tools; the agent acknowledges with empathy, says the
-  team will follow up within 24 business hours, and gives the human contacts — the
-  limitation is stated in the README. Alternative: a third tool `escalate_to_human`
-  that appends to a local JSONL log (small, but breaks "read-only").
-- **Q3** Model: default `claude-opus-5-5` at low effort, overridable by env (e.g.
-  `claude-haiku-5-5` for cost/latency). OK?
+- **Q1 (decided)** Contacts: phone (67) 3341-4444, WhatsApp (67) 3321-4500 (R-INFO-2).
+- **Q2 (decided)** Complaints are registered by a third tool, `register_complaint`,
+  the single write operation (section 5.3, R-CMP-*).
+- **Q3 (open)** Model: default `claude-opus-5-5` at low effort, overridable by env (e.g.
+  `claude-haiku-5-5` for cost/latency).
