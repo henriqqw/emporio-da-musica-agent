@@ -227,29 +227,8 @@ line of defence.
 
 ## 9. Layout
 
-```
-emporio/
-  config.py           settings from env
-  data.py             CSV loading into typed records (one place that knows file names)
-  pricing.py          pure: promo, PIX, installments
-  catalog.py          product search + availability
-  orders.py           identification, status labels, after-sales windows
-  complaints.py       complaint store (JSONL), protocol and deadline
-  tools.py            tool schemas + dispatch (thin; calls catalog/orders/complaints)
-  prompt.py           system prompt builder
-  agent.py            LLM loop (depends on an injected Anthropic client)
-  sessions.py         in-memory session store with TTL
-  whatsapp_format.py  reply sanitizer
-  service.py          ChatService + IncomingMessage/OutgoingMessage
-  api.py              FastAPI app (demo channel)
-knowledge/policies.md
-static/index.html
-tests/
-docs/ (spec, business rules, plan, examples/)
-```
-
-Dependencies point inward: `api → service → agent → tools → catalog/orders/complaints → pricing/data`.
-Nothing below `service` imports FastAPI; nothing below `agent` imports the SDK.
+Module map, stack, dependency rule and the reasoning behind each choice are in
+[architecture.md](architecture.md) (sections 1, 2 and 4).
 
 ## 10. Acceptance scenarios
 
