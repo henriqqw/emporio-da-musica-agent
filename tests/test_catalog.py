@@ -61,6 +61,12 @@ def test_alternatives_by_type(catalog):
     assert set(sellable) == {109, 110, 111, 112}
 
 
+def test_query_of_stopwords_only_finds_nothing(catalog):
+    # "quero" alone must not become "browse the whole catalog"
+    assert catalog.search(query="quero").total_found == 0
+    assert catalog.search(query="quero", category="Ukuleles").total_found > 0
+
+
 def test_numbers_match_whole_words_only(catalog):
     # "7" must not match the "700" in "Kalani KAL-700T"
     assert 127 not in _ids(catalog.search(query="7", include_unavailable=True))

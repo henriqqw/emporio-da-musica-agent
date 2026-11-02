@@ -10,7 +10,7 @@ _RULES = [
     (re.compile(r"\*\*(.+?)\*\*"), r"*\1*"),  # **bold** -> *bold*
     (re.compile(r"__(.+?)__"), r"_\1_"),  # __italic__ -> _italic_
     (re.compile(r"\[([^\]]+)\]\((\S+?)\)"), r"\1 (\2)"),  # [text](url) -> text (url)
-    (re.compile(r"^#{1,6}\s*(.+)$", re.M), r"*\1*"),  # "## Title" -> *Title*
+    (re.compile(r"^#{1,6}\s+(.+)$", re.M), r"*\1*"),  # "## Title" -> *Title*, not "#1"
     (re.compile(r"^\s*[-*]\s+", re.M), "• "),  # "- item" / "* item" -> "• item"
     (re.compile(r"^\s*\|?\s*:?-{3,}.*$\n?", re.M), ""),  # table separator rows
 ]

@@ -70,6 +70,11 @@ def test_empty_search_lists_categories_in_stock(toolbox):
     assert "categories_in_stock" not in found
 
 
+def test_search_by_minimum_price_alone(toolbox):
+    result = toolbox.run("search_products", {"min_price": 15000}, _context())
+    assert {p["id"] for p in result["products"]} == {131, 143}  # Gibson Les Paul, Nord
+
+
 def test_search_products_needs_a_filter(toolbox):
     with pytest.raises(ToolError):
         toolbox.run("search_products", {}, _context())

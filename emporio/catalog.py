@@ -90,6 +90,9 @@ class Catalog:
         Browsing by category or price shows only sellable products unless asked.
         """
         tokens = _tokens(query or "")
+        filtered = bool(category) or min_price is not None or max_price is not None
+        if query and not tokens and not filtered:
+            return SearchResult(offers=(), total_found=0)  # e.g. "quero": nothing to search
         candidates = self._in_category(category)
 
         scored: list[tuple[int, bool, Offer]] = []
@@ -134,6 +137,7 @@ class Catalog:
         "cordas", "nylon"...), then the closest price.
         """
         wanted = _type_words(product)
+        reference_price = self.offer(product).price.card_price
         candidates = [
             offer
             for other in self._store.products.values()
@@ -143,7 +147,7 @@ class Catalog:
         candidates.sort(
             key=lambda o: (
                 -len(wanted & _type_words(o.product)),
-                abs(o.price.card_price - product.price),
+                abs(o.price.card_price - reference_price),
             )
         )
         return candidates[:limit]

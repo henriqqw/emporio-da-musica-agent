@@ -41,7 +41,7 @@ def tool_definitions(category_names: list[str]) -> list[dict[str, Any]]:
             "Busca instrumentos no catálogo da loja com preço, promoção, PIX, parcelamento e "
             "disponibilidade atuais. Use SEMPRE antes de falar de preço, estoque ou promoção "
             "de qualquer produto, e para sugerir alternativas. Informe ao menos um entre "
-            "query, category e max_price.",
+            "query, category, min_price e max_price.",
             {
                 "query": {
                     "type": "string",
@@ -120,8 +120,9 @@ class Toolbox:
         return handlers[name](validate_arguments(self._schemas[name], arguments), context)
 
     def _search_products(self, args: dict[str, Any], _: ToolContext) -> dict[str, Any]:
-        if not any(args.get(key) for key in ("query", "category", "max_price")):
-            raise ToolError("Informe ao menos um entre query, category e max_price.")
+        filters = ("query", "category", "min_price", "max_price")
+        if all(args.get(key) in (None, "") for key in filters):
+            raise ToolError("Informe ao menos um entre query, category, min_price e max_price.")
         if any(args.get(key, 0) < 0 for key in ("min_price", "max_price")):
             raise ToolError("Preços não podem ser negativos.")
         result = self._catalog.search(

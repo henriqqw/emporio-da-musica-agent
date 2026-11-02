@@ -41,13 +41,22 @@ def load_settings() -> Settings:
     return Settings(
         model=os.getenv("LLM_MODEL") or DEFAULT_MODEL,
         reference_date=date.fromisoformat(raw_date) if raw_date else None,
-        session_ttl_minutes=int(os.getenv("SESSION_TTL_MINUTES", "30")),
+        session_ttl_minutes=_positive_int("SESSION_TTL_MINUTES", default=30),
         data_dir=_project_path(os.getenv("DATA_DIR", "data")),
         complaints_path=_project_path(os.getenv("COMPLAINTS_PATH", "var/complaints.jsonl")),
         llm_base_url=os.getenv("LLM_BASE_URL") or DEFAULT_BASE_URL,
         llm_api_key=os.getenv("LLM_API_KEY", ""),
         reasoning_effort=os.getenv("LLM_REASONING_EFFORT") or None,
     )
+
+
+def _positive_int(name: str, default: int) -> int:
+    raw = os.getenv(name, "").strip()
+    if not raw:
+        return default
+    if not raw.isdigit() or int(raw) == 0:
+        raise ValueError(f"{name} must be a positive whole number, got {raw!r}")
+    return int(raw)
 
 
 def _project_path(value: str) -> Path:

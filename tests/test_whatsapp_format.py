@@ -29,3 +29,7 @@ def test_flattens_tables():
 def test_keeps_whatsapp_formatting_untouched():
     text = "Oi, Ana! O *Yamaha C40* está _disponível_ 🎸\n• PIX: R$ 569,91"
     assert sanitize(text) == text
+
+
+def test_hash_followed_by_text_is_not_a_heading():
+    assert sanitize("#1 mais vendido da loja") == "#1 mais vendido da loja"
