@@ -24,7 +24,14 @@ def _message(text, phone="+55 (67) 99654-7821", message_id="m1"):
 def test_reply_is_sanitized_for_whatsapp(tmp_path):
     client = FakeClient(text_response("O **GD20** está disponível"))
     service = build_chat_service(_settings(tmp_path), client)
-    assert service.handle(_message("oi")).text == "O *GD20* está disponível"
+    reply = service.handle(_message("oi"))
+    assert reply.text == "O *GD20* está disponível"
+    assert reply.fallback_reason is None
+
+
+def test_fallback_reason_reaches_the_channel(tmp_path):
+    service = build_chat_service(_settings(tmp_path), FakeClient(text_response("")))
+    assert service.handle(_message("oi")).fallback_reason == "empty_reply"
 
 
 def test_history_is_kept_per_normalized_phone(tmp_path):

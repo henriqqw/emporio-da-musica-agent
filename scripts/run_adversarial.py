@@ -7,9 +7,10 @@ Each case goes through ChatService like a real customer. A case passes when:
 - code checks pass (hard failures): no other customer's e-mail or tracking code, no
   leaked prompt text, nothing from `forbid`, something from `require_any`;
 - the LLM judge (same provider) says the final reply meets the case's expectation.
-A case whose conversation hit a provider error (timeout, rate limit: the agent's
-fallback reply) is retried once after a pause; if it fails again it is reported as
-"not evaluated" and left out of the pass rate, since it says nothing about the model.
+A case whose conversation or judgment hit a provider error (timeout, rate limit) is
+retried once after a pause; if it fails again it is reported as "not evaluated" and left
+out of the pass rate, since it says nothing about the model. Other fallbacks (refusal,
+content filter, empty reply, tool loop) are the model's behaviour and are judged.
 Report: docs/evals/adversarial-<label>.md. Free tiers limit requests per minute, so the
 runner pauses between calls.
 """
@@ -25,7 +26,7 @@ from pathlib import Path
 
 import openai
 
-from emporio.agent import FALLBACK_REPLY
+from emporio.agent import PROVIDER_ERROR
 from emporio.config import PROJECT_ROOT, Settings, load_settings
 from emporio.data import load_store_data
 from emporio.phone import normalize_phone
@@ -158,16 +159,32 @@ def run(settings: Settings, cases: list[Case]) -> list[Result]:
             if replies is None:  # provider error: wait out the rate-limit window, retry once
                 time.sleep(RETRY_PAUSE_SECONDS)
                 replies = _converse(run_settings, case)
-            if replies is None:
-                result = Result(case, [], infra_error=True)
+            verdict = None
+            if replies is not None:
+                verdict = _judge_with_retry(judge_client, settings, case, replies)
+            if replies is None or verdict is None:
+                result = Result(case, replies or [], infra_error=True)
             else:
-                passed, reason = judge(judge_client, settings.model, case, replies)
-                time.sleep(PAUSE_SECONDS / 2)
                 failures = code_failures(case, replies, personal_data)
-                result = Result(case, replies, failures, passed, reason)
+                result = Result(case, replies, failures, *verdict)
             results.append(result)
             print(f"{case.id}: {result.status}", flush=True)
     return results
+
+
+def _judge_with_retry(
+    client: openai.OpenAI, settings: Settings, case: Case, replies: list[str]
+) -> tuple[bool, str] | None:
+    """The judge's verdict, or None if the provider failed twice."""
+    for attempt in range(2):
+        try:
+            verdict = judge(client, settings.model, case, replies)
+            time.sleep(PAUSE_SECONDS / 2)
+            return verdict
+        except openai.APIError:
+            if attempt == 0:
+                time.sleep(RETRY_PAUSE_SECONDS)
+    return None
 
 
 def _converse(settings: Settings, case: Case) -> list[str] | None:
@@ -176,11 +193,11 @@ def _converse(settings: Settings, case: Case) -> list[str] | None:
     replies = []
     for text in case.messages:
         message = IncomingMessage("web", case.phone, text, str(uuid.uuid4()))
-        reply = service.handle(message).text
+        reply = service.handle(message)
         time.sleep(PAUSE_SECONDS)
-        if reply == FALLBACK_REPLY:
+        if reply.fallback_reason == PROVIDER_ERROR:
             return None
-        replies.append(reply)
+        replies.append(reply.text)
     return replies
 
 
@@ -212,7 +229,7 @@ def report(results: list[Result], label: str, model: str) -> str:
         "|---|---|---|---|",
     ]
     for r in results:
-        why = "; ".join(r.code_failures) or r.judge_reason or "provider error twice"
+        why = "; ".join(r.code_failures) or r.judge_reason or "provider error, twice"
         lines.append(f"| {r.case.id} | {r.case.category} | {r.status} | {why.replace('|', '/')} |")
     lines += ["", "## Conversations", ""]
     for r in results:

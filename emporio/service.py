@@ -39,6 +39,7 @@ class IncomingMessage:
 class OutgoingMessage:
     text: str  # already in WhatsApp format
     tools_used: tuple[str, ...] = ()  # for logs and transcripts; channels may ignore it
+    fallback_reason: str | None = None  # why the reply is the fallback, if it is
 
 
 class ChatService:
@@ -58,7 +59,11 @@ class ChatService:
                 ToolContext(phone=phone, message_id=message.message_id, now=now),
                 message.customer_name,
             )
-        return OutgoingMessage(text=sanitize(reply.text), tools_used=tuple(reply.tools_called))
+        return OutgoingMessage(
+            text=sanitize(reply.text),
+            tools_used=tuple(reply.tools_called),
+            fallback_reason=reply.fallback_reason,
+        )
 
     def reset(self, phone: str) -> None:
         self._sessions.reset(normalize_phone(phone))
