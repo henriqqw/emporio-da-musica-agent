@@ -1,4 +1,4 @@
-"""Scripted stand-in for the OpenAI client, so no test needs network or an API key.
+"""Test doubles: a scripted OpenAI client (no network or API key) and a manual clock.
 
 Responses are built from the SDK's real types, so a shape mismatch with the API
 fails here and not in production.
@@ -62,3 +62,13 @@ class FakeClient:
         if isinstance(response, Exception):
             raise response
         return response
+
+
+class FakeClock:
+    """Monotonic clock the test moves by hand (`clock.now += 60`)."""
+
+    def __init__(self) -> None:
+        self.now = 0.0
+
+    def __call__(self) -> float:
+        return self.now

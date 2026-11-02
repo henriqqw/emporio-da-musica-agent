@@ -1,10 +1,10 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from emporio.api import create_app
+from emporio.api import MESSAGES_PER_IP, MESSAGES_PER_PHONE, create_app
 from emporio.service import build_chat_service
 from tests.constants import ANA_PHONE as PHONE
-from tests.fakes import FakeClient, text_response
+from tests.fakes import FakeClient, FakeClock, text_response
 
 
 @pytest.fixture
@@ -48,3 +48,39 @@ def test_reset_starts_a_new_conversation(api, llm):
 def test_index_and_health(api):
     assert "<title>" in api.get("/").text
     assert api.get("/health").json() == {"status": "ok"}
+
+
+def test_rate_limit_per_phone_blocks_before_the_llm(settings):
+    llm = FakeClient(*[text_response("ok") for _ in range(MESSAGES_PER_PHONE)])
+    client = TestClient(create_app(build_chat_service(settings, llm)))
+    for _ in range(MESSAGES_PER_PHONE):
+        assert client.post("/chat", json={"phone": PHONE, "text": "oi"}).status_code == 200
+
+    blocked = client.post("/chat", json={"phone": PHONE, "text": "oi"})
+    assert blocked.status_code == 429
+    assert "Aguarde um minuto" in blocked.json()["detail"]
+    assert len(llm.requests) == MESSAGES_PER_PHONE  # the blocked message cost no LLM call
+    # another phone is not affected
+    other = client.post("/chat", json={"phone": "(67) 98432-1098", "text": "oi"})
+    assert other.status_code != 429
+
+
+def test_rate_limit_per_ip_across_phones(settings):
+    # a script changing the phone on every try is still limited by its address
+    llm = FakeClient(*[text_response("ok") for _ in range(MESSAGES_PER_IP)])
+    client = TestClient(create_app(build_chat_service(settings, llm)))
+    phones = [f"(67) 99{n:03d}-0000" for n in range(MESSAGES_PER_IP + 1)]
+    codes = [client.post("/chat", json={"phone": p, "text": "oi"}).status_code for p in phones]
+    assert codes[:MESSAGES_PER_IP] == [200] * MESSAGES_PER_IP
+    assert codes[-1] == 429
+
+
+def test_rate_limit_window_resets(settings):
+    clock = FakeClock()
+    llm = FakeClient(*[text_response("ok") for _ in range(MESSAGES_PER_PHONE + 1)])
+    client = TestClient(create_app(build_chat_service(settings, llm), clock=clock))
+    for _ in range(MESSAGES_PER_PHONE):
+        client.post("/chat", json={"phone": PHONE, "text": "oi"})
+    assert client.post("/chat", json={"phone": PHONE, "text": "oi"}).status_code == 429
+    clock.now += 60
+    assert client.post("/chat", json={"phone": PHONE, "text": "oi"}).status_code == 200

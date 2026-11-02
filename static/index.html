@@ -117,7 +117,9 @@
       });
       if (!response.ok && response.status !== 204) {
         const detail = await response.json().catch(() => ({}));
-        throw new Error(detail.detail?.[0]?.msg || `Erro ${response.status}`);
+        // validation errors (422) come as a list; others, like the rate limit (429), as text
+        const message = Array.isArray(detail.detail) ? detail.detail[0]?.msg : detail.detail;
+        throw new Error(message || `Erro ${response.status}`);
       }
       return response.status === 204 ? null : response.json();
     }
