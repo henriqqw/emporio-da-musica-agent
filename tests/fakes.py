@@ -1,28 +1,50 @@
-"""Scripted stand-in for the Anthropic client, so no test needs network or an API key."""
+"""Scripted stand-in for the OpenAI client, so no test needs network or an API key.
 
-from types import SimpleNamespace
+Responses are built from the SDK's real types, so a shape mismatch with the API
+fails here and not in production.
+"""
 
-USAGE = SimpleNamespace(input_tokens=10, cache_read_input_tokens=0, output_tokens=5)
+import json
+
+from openai.types import CompletionUsage
+from openai.types.chat import ChatCompletion, ChatCompletionMessage
+from openai.types.chat.chat_completion import Choice
+from openai.types.chat.chat_completion_message_function_tool_call import (
+    ChatCompletionMessageFunctionToolCall,
+    Function,
+)
+
+USAGE = CompletionUsage(prompt_tokens=10, completion_tokens=5, total_tokens=15)
 
 
-def text_response(text):
-    return SimpleNamespace(
-        stop_reason="end_turn",
-        stop_details=None,
-        content=[SimpleNamespace(type="text", text=text)],
+def _completion(message: ChatCompletionMessage, finish_reason: str) -> ChatCompletion:
+    return ChatCompletion(
+        id="fake",
+        object="chat.completion",
+        created=0,
+        model="fake-model",
+        choices=[Choice(index=0, finish_reason=finish_reason, message=message)],
         usage=USAGE,
     )
 
 
-def tool_response(name, arguments, tool_id="t1"):
-    block = SimpleNamespace(type="tool_use", id=tool_id, name=name, input=arguments)
-    return SimpleNamespace(stop_reason="tool_use", stop_details=None, content=[block], usage=USAGE)
+def text_response(text: str) -> ChatCompletion:
+    message = ChatCompletionMessage(role="assistant", content=text)
+    return _completion(message, "stop")
 
 
-def refusal_response():
-    return SimpleNamespace(
-        stop_reason="refusal", stop_details={"category": None}, content=[], usage=USAGE
+def tool_response(name: str, arguments: dict | str, tool_id: str = "call_1") -> ChatCompletion:
+    raw = arguments if isinstance(arguments, str) else json.dumps(arguments)
+    call = ChatCompletionMessageFunctionToolCall(
+        id=tool_id, type="function", function=Function(name=name, arguments=raw)
     )
+    message = ChatCompletionMessage(role="assistant", content=None, tool_calls=[call])
+    return _completion(message, "tool_calls")
+
+
+def filtered_response() -> ChatCompletion:
+    message = ChatCompletionMessage(role="assistant", content=None)
+    return _completion(message, "content_filter")
 
 
 class FakeClient:
@@ -31,7 +53,8 @@ class FakeClient:
     def __init__(self, *responses):
         self._responses = list(responses)
         self.requests = []
-        self.messages = self
+        self.chat = self
+        self.completions = self
 
     def create(self, **request):
         self.requests.append(request | {"messages": list(request["messages"])})

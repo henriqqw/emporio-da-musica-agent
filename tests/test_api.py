@@ -19,8 +19,7 @@ def llm():
 @pytest.fixture
 def api(llm, tmp_path):
     settings = Settings(
-        model="claude-haiku-5-5",
-        effort="low",
+        model="fake-model",
         reference_date=date(2026, 3, 25),
         session_ttl_minutes=30,
         data_dir=PROJECT_ROOT / "data",
@@ -33,7 +32,7 @@ def test_chat_returns_the_reply(api, llm):
     response = api.post("/chat", json={"phone": PHONE, "text": "oi", "customer_name": "Ana"})
     assert response.status_code == 200
     assert response.json() == {"reply": "Oi! Como posso ajudar?"}
-    assert "Ana" in llm.requests[0]["system"][1]["text"]
+    assert "Ana" in llm.requests[0]["messages"][0]["content"]
 
 
 @pytest.mark.parametrize(
@@ -54,7 +53,7 @@ def test_reset_starts_a_new_conversation(api, llm):
     api.post("/chat", json={"phone": PHONE, "text": "oi"})
     assert api.post("/chat/reset", json={"phone": PHONE}).status_code == 204
     api.post("/chat", json={"phone": PHONE, "text": "obrigado"})
-    assert len(llm.requests[1]["messages"]) == 1
+    assert len(llm.requests[1]["messages"]) == 2  # system + the new message
 
 
 def test_index_and_health(api):

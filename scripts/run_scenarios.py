@@ -1,6 +1,6 @@
 """Run the acceptance conversations against the live model and save transcripts.
 
-Usage:  python -m scripts.run_scenarios            (needs ANTHROPIC_API_KEY in .env)
+Usage:  python -m scripts.run_scenarios            (needs LLM_API_KEY in .env)
         python -m scripts.run_scenarios devolucao  (only the named scenario)
 
 Each scenario goes through ChatService exactly like a real channel would. The clock

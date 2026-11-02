@@ -9,8 +9,7 @@ from tests.fakes import FakeClient, text_response, tool_response
 
 def _settings(tmp_path):
     return Settings(
-        model="claude-haiku-5-5",
-        effort="low",
+        model="fake-model",
         reference_date=date(2026, 3, 25),
         session_ttl_minutes=30,
         data_dir=PROJECT_ROOT / "data",
@@ -35,7 +34,7 @@ def test_history_is_kept_per_normalized_phone(tmp_path):
     service.handle(_message("e o preço?", phone="5567996547821"))
 
     second_request = client.requests[1]["messages"]
-    assert [m["role"] for m in second_request] == ["user", "assistant", "user"]
+    assert [m["role"] for m in second_request] == ["system", "user", "assistant", "user"]
 
 
 def test_tools_receive_phone_and_message_id_from_the_channel(tmp_path):
@@ -60,7 +59,7 @@ def test_reference_date_drives_the_clock(tmp_path):
     client = FakeClient(text_response("Oi!"))
     service = build_chat_service(_settings(tmp_path), client)
     service.handle(_message("oi"))
-    assert "25/03/2026" in client.requests[0]["system"][1]["text"]
+    assert "25/03/2026" in client.requests[0]["messages"][0]["content"]
 
 
 def test_reset_starts_a_new_conversation(tmp_path):
@@ -69,11 +68,11 @@ def test_reset_starts_a_new_conversation(tmp_path):
     service.handle(_message("oi"))
     service.reset("67996547821")
     service.handle(_message("oi"))
-    assert len(client.requests[1]["messages"]) == 1
+    assert len(client.requests[1]["messages"]) == 2  # system + the new message
 
 
 def test_missing_api_key_fails_at_startup(tmp_path):
-    with pytest.raises(RuntimeError, match="ANTHROPIC_API_KEY"):
+    with pytest.raises(RuntimeError, match="LLM_API_KEY"):
         build_chat_service(_settings(tmp_path))
 
 

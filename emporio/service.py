@@ -9,7 +9,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
-import anthropic
+import openai
 
 from emporio.agent import Agent
 from emporio.catalog import Catalog
@@ -63,18 +63,20 @@ class ChatService:
 
 def build_chat_service(
     settings: Settings,
-    client: anthropic.Anthropic | None = None,
+    client: openai.OpenAI | None = None,
     clock: Callable[[], datetime] | None = None,
 ) -> ChatService:
     """Wire the whole application from settings (composition root).
 
     `client` and `clock` are injectable for tests and reproducible scenario runs.
     """
-    if client is None and not settings.has_credentials:
-        # Fail at startup, not on the first customer message.
-        raise RuntimeError("ANTHROPIC_API_KEY is not set: copy .env.example to .env and fill it.")
+    if client is None:
+        if not settings.llm_api_key:
+            # Fail at startup, not on the first customer message.
+            raise RuntimeError("LLM_API_KEY is not set: copy .env.example to .env and fill it.")
+        client = openai.OpenAI(base_url=settings.llm_base_url, api_key=settings.llm_api_key)
     store = load_store_data(settings.data_dir)
     toolbox = Toolbox(Catalog(store), OrderService(store), ComplaintStore(settings.complaints_path))
-    agent = Agent(client or anthropic.Anthropic(), toolbox, settings.model, settings.effort)
+    agent = Agent(client, toolbox, settings.model, settings.reasoning_effort)
     sessions = SessionStore(ttl=timedelta(minutes=settings.session_ttl_minutes))
     return ChatService(agent, sessions, clock=clock or settings.now)

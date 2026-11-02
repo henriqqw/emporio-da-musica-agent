@@ -29,79 +29,71 @@ class ToolContext:
 
 
 def tool_definitions(category_names: list[str]) -> list[dict[str, Any]]:
-    """Fixed, ordered list (part of the cached prompt prefix)."""
+    """OpenAI function-calling format. Fixed and ordered, so the request prefix is stable.
+
+    Kept to the JSON Schema subset every OpenAI-compatible provider accepts (no
+    `strict`, no `additionalProperties`); validate_arguments enforces the rest.
+    """
     return [
-        {
-            "name": "search_products",
-            "description": (
-                "Busca instrumentos no catálogo da loja com preço, promoção, PIX, "
-                "parcelamento e disponibilidade atuais. Use SEMPRE antes de falar de preço, "
-                "estoque ou promoção de qualquer produto, e para sugerir alternativas. "
-                "Informe ao menos um entre query, category e max_price."
-            ),
-            "strict": True,
-            "input_schema": {
-                "type": "object",
-                "properties": {
-                    "query": {
-                        "type": "string",
-                        "description": "Marca, modelo ou tipo, ex.: 'takamine gd20', '7 cordas'.",
-                    },
-                    "category": {"type": "string", "enum": category_names},
-                    "min_price": {"type": "number", "description": "Preço mínimo em R$."},
-                    "max_price": {"type": "number", "description": "Preço máximo em R$."},
-                    "include_unavailable": {
-                        "type": "boolean",
-                        "description": "Incluir esgotados, descontinuados e em breve.",
-                    },
+        _function(
+            "search_products",
+            "Busca instrumentos no catálogo da loja com preço, promoção, PIX, parcelamento e "
+            "disponibilidade atuais. Use SEMPRE antes de falar de preço, estoque ou promoção "
+            "de qualquer produto, e para sugerir alternativas. Informe ao menos um entre "
+            "query, category e max_price.",
+            {
+                "query": {
+                    "type": "string",
+                    "description": "Marca, modelo ou tipo, ex.: 'takamine gd20', '7 cordas'.",
                 },
-                "additionalProperties": False,
-            },
-        },
-        {
-            "name": "get_order",
-            "description": (
-                "Consulta pedidos do cliente desta conversa. O telefone já vem do canal; "
-                "peça ao cliente o e-mail cadastrado antes de chamar. Sem order_id, lista os "
-                "pedidos mais recentes. Retorna status, rastreio e prazos de troca/devolução."
-            ),
-            "strict": True,
-            "input_schema": {
-                "type": "object",
-                "properties": {
-                    "email": {"type": "string", "description": "E-mail informado pelo cliente."},
-                    "order_id": {"type": "integer", "description": "Número do pedido."},
+                "category": {"type": "string", "enum": category_names},
+                "min_price": {"type": "number", "description": "Preço mínimo em R$."},
+                "max_price": {"type": "number", "description": "Preço máximo em R$."},
+                "include_unavailable": {
+                    "type": "boolean",
+                    "description": "Incluir esgotados, descontinuados e em breve.",
                 },
-                "required": ["email"],
-                "additionalProperties": False,
             },
-        },
-        {
-            "name": "register_complaint",
-            "description": (
-                "Registra uma reclamação para a equipe responder em até 24 horas úteis. "
-                "Só chame depois de resumir a reclamação ao cliente e ele confirmar. "
-                "Retorna o protocolo e o prazo, que devem ser informados ao cliente."
-            ),
-            "strict": True,
-            "input_schema": {
-                "type": "object",
-                "properties": {
-                    "summary": {
-                        "type": "string",
-                        "description": f"Resumo objetivo, até {MAX_SUMMARY_LENGTH} caracteres.",
-                    },
-                    "category": {"type": "string", "enum": list(CATEGORIES)},
-                    "order_id": {
-                        "type": "integer",
-                        "description": "Pedido relacionado, se houver.",
-                    },
+        ),
+        _function(
+            "get_order",
+            "Consulta pedidos do cliente desta conversa. O telefone já vem do canal; peça ao "
+            "cliente o e-mail cadastrado antes de chamar. Sem order_id, lista os pedidos mais "
+            "recentes. Retorna status, rastreio e prazos de troca/devolução.",
+            {
+                "email": {"type": "string", "description": "E-mail informado pelo cliente."},
+                "order_id": {"type": "integer", "description": "Número do pedido."},
+            },
+            required=["email"],
+        ),
+        _function(
+            "register_complaint",
+            "Registra uma reclamação para a equipe responder em até 24 horas úteis. Só chame "
+            "depois de resumir a reclamação ao cliente e ele confirmar. Retorna o protocolo e "
+            "o prazo, que devem ser informados ao cliente.",
+            {
+                "summary": {
+                    "type": "string",
+                    "description": f"Resumo objetivo, até {MAX_SUMMARY_LENGTH} caracteres.",
                 },
-                "required": ["summary", "category"],
-                "additionalProperties": False,
+                "category": {"type": "string", "enum": list(CATEGORIES)},
+                "order_id": {"type": "integer", "description": "Pedido relacionado, se houver."},
             },
-        },
+            required=["summary", "category"],
+        ),
     ]
+
+
+def _function(
+    name: str, description: str, properties: dict[str, Any], required: list[str] | None = None
+) -> dict[str, Any]:
+    parameters: dict[str, Any] = {"type": "object", "properties": properties}
+    if required:
+        parameters["required"] = required
+    return {
+        "type": "function",
+        "function": {"name": name, "description": description, "parameters": parameters},
+    }
 
 
 class Toolbox:
@@ -110,6 +102,8 @@ class Toolbox:
         self._orders = orders
         self._complaints = complaints
         self.definitions = tool_definitions(catalog.category_names)
+        functions = (d["function"] for d in self.definitions)
+        self._schemas = {f["name"]: f["parameters"] for f in functions}
 
     def run(self, name: str, arguments: Any, context: ToolContext) -> dict[str, Any]:
         handlers = {
@@ -119,8 +113,7 @@ class Toolbox:
         }
         if name not in handlers:
             raise ToolError(f"Ferramenta desconhecida: {name}")
-        schema = next(d["input_schema"] for d in self.definitions if d["name"] == name)
-        return handlers[name](validate_arguments(schema, arguments), context)
+        return handlers[name](validate_arguments(self._schemas[name], arguments), context)
 
     def _search_products(self, args: dict[str, Any], _: ToolContext) -> dict[str, Any]:
         if not any(args.get(key) for key in ("query", "category", "max_price")):

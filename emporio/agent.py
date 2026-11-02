@@ -1,8 +1,8 @@
-"""Tool-use loop over the Anthropic Messages API (spec section 7, ADR-02).
+"""Tool-use loop over any OpenAI-compatible Chat Completions API (spec 7, ADR-02, ADR-13).
 
 The client is injected, so tests drive the loop with a fake. Every failure mode
-(API error, refusal, too many tool rounds) ends in the same polite fallback,
-never in an exception reaching the customer.
+(API error, content filter, empty reply, too many tool rounds) ends in the same
+polite fallback, never in an exception reaching the customer.
 """
 
 import json
@@ -11,15 +11,14 @@ import time
 from dataclasses import dataclass, field
 from typing import Any
 
-import anthropic
+import openai
 
-from emporio.prompt import system_blocks
+from emporio.prompt import system_prompt
 from emporio.tools import Toolbox, ToolContext, ToolError
 
 logger = logging.getLogger(__name__)
 
 MAX_TOOL_ROUNDS = 5
-MAX_TOKENS = 8000
 FALLBACK_REPLY = (
     "Desculpa, tive um probleminha aqui e não consegui te responder agora. 😕 "
     "Você pode tentar de novo em instantes ou falar com a nossa equipe pelo telefone "
@@ -37,80 +36,89 @@ class AgentReply:
 class Agent:
     def __init__(
         self,
-        client: anthropic.Anthropic,
+        client: openai.OpenAI,
         toolbox: Toolbox,
         model: str,
-        effort: str,
+        reasoning_effort: str | None = None,
     ) -> None:
         self._client = client
         self._toolbox = toolbox
         self._model = model
-        self._effort = effort
+        # Sent only when configured: not every provider accepts the parameter.
+        self._extra = {"reasoning_effort": reasoning_effort} if reasoning_effort else {}
 
     def respond(
-        self, messages: list[dict[str, Any]], context: ToolContext, customer_name: str | None
+        self, history: list[dict[str, Any]], context: ToolContext, customer_name: str | None
     ) -> AgentReply:
-        """Answer the last user message in `messages`, appending the assistant turns.
+        """Answer the last user message in `history`, appending the assistant turns.
 
-        `messages` is the session history and is only ever appended to.
+        `history` is the session's conversation and is only ever appended to; the system
+        prompt is rebuilt on every request because it carries the current time.
         """
-        system = system_blocks(context.now, customer_name)
+        system = {"role": "system", "content": system_prompt(context.now, customer_name)}
         reply = AgentReply(text="")
 
         for _ in range(MAX_TOOL_ROUNDS + 1):
             try:
-                response = self._client.messages.create(
+                response = self._client.chat.completions.create(
                     model=self._model,
-                    max_tokens=MAX_TOKENS,
-                    system=system,
+                    messages=[system, *history],
                     tools=self._toolbox.definitions,
-                    messages=messages,
-                    output_config={"effort": self._effort},
+                    **self._extra,
                 )
-            except anthropic.APIError:
+            except openai.APIError:
                 logger.exception("LLM request failed")
                 return _fallback(reply)
 
-            _log_usage(response)
-            if response.stop_reason == "refusal":
-                logger.warning("model refused: %s", response.stop_details)
+            choice = response.choices[0]
+            _log_usage(choice.finish_reason, response.usage)
+            message = choice.message
+            if choice.finish_reason == "content_filter" or message.refusal:
+                logger.warning("model refused or response was filtered")
                 return _fallback(reply)
 
-            messages.append({"role": "assistant", "content": response.content})
-            tool_uses = [block for block in response.content if block.type == "tool_use"]
-            if response.stop_reason != "tool_use" or not tool_uses:
-                reply.text = _text(response.content)
+            history.append(_assistant_message(message))
+            if not message.tool_calls:
+                reply.text = (message.content or "").strip()
                 return reply if reply.text else _fallback(reply)
 
-            messages.append(
-                {"role": "user", "content": [self._run_tool(b, context, reply) for b in tool_uses]}
-            )
+            for call in message.tool_calls:
+                history.append(self._run_tool(call, context, reply))
 
         logger.warning("stopped after %d tool rounds", MAX_TOOL_ROUNDS)
         return _fallback(reply)
 
-    def _run_tool(self, block: Any, context: ToolContext, reply: AgentReply) -> dict[str, Any]:
-        reply.tools_called.append(block.name)
+    def _run_tool(self, call: Any, context: ToolContext, reply: AgentReply) -> dict[str, Any]:
+        name = call.function.name
+        reply.tools_called.append(name)
         started = time.perf_counter()
-        is_error = False
+        failed = True
         try:
-            content = json.dumps(
-                self._toolbox.run(block.name, block.input, context),
-                ensure_ascii=False,
-                separators=(",", ":"),
-            )
+            arguments = json.loads(call.function.arguments or "{}")
+            result = self._toolbox.run(name, arguments, context)
+            content = json.dumps(result, ensure_ascii=False, separators=(",", ":"))
+            failed = False
+        except json.JSONDecodeError:
+            content = "ERRO: os argumentos não são um JSON válido."
         except ToolError as error:
-            content, is_error = str(error), True
+            content = f"ERRO: {error}"
         except Exception:
-            logger.exception("tool %s crashed", block.name)
-            content, is_error = "Erro interno ao executar a ferramenta.", True
+            logger.exception("tool %s crashed", name)
+            content = "ERRO: falha interna ao executar a ferramenta."
 
         elapsed_ms = (time.perf_counter() - started) * 1000
-        logger.info("tool=%s error=%s %.0fms", block.name, is_error, elapsed_ms)
-        result = {"type": "tool_result", "tool_use_id": block.id, "content": content}
-        if is_error:
-            result["is_error"] = True
-        return result
+        logger.info("tool=%s error=%s %.0fms", name, failed, elapsed_ms)
+        return {"role": "tool", "tool_call_id": call.id, "content": content}
+
+
+def _assistant_message(message: Any) -> dict[str, Any]:
+    """The assistant message as the provider sent it, minus empty fields.
+
+    Dumping the SDK object (instead of rebuilding it) keeps provider-specific extras,
+    such as Gemini's thought signatures on tool calls, that must be sent back as is.
+    """
+    data = message.model_dump(exclude_none=True)
+    return {key: value for key, value in data.items() if value not in ([], {}, "")}
 
 
 def _fallback(reply: AgentReply) -> AgentReply:
@@ -119,16 +127,15 @@ def _fallback(reply: AgentReply) -> AgentReply:
     return reply
 
 
-def _text(content: list[Any]) -> str:
-    return "\n".join(block.text for block in content if block.type == "text").strip()
-
-
-def _log_usage(response: Any) -> None:
-    usage = response.usage
+def _log_usage(finish_reason: str | None, usage: Any) -> None:
+    if usage is None:  # some providers omit it
+        logger.info("llm finish=%s", finish_reason)
+        return
+    details = usage.prompt_tokens_details
     logger.info(
-        "llm stop=%s in=%s cache_read=%s out=%s",
-        response.stop_reason,
-        usage.input_tokens,
-        usage.cache_read_input_tokens,
-        usage.output_tokens,
+        "llm finish=%s in=%s cached=%s out=%s",
+        finish_reason,
+        usage.prompt_tokens,
+        details.cached_tokens if details else None,
+        usage.completion_tokens,
     )

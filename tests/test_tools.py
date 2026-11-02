@@ -23,14 +23,14 @@ def _context(phone=ANA_PHONE, message_id="m1"):
     )
 
 
-def test_definitions_are_strict_and_closed(toolbox):
-    names = [d["name"] for d in toolbox.definitions]
-    assert names == ["search_products", "get_order", "register_complaint"]
-    for definition in toolbox.definitions:
-        assert definition["strict"] is True
-        assert definition["input_schema"]["additionalProperties"] is False
+def test_definitions_use_the_openai_function_format(toolbox):
+    functions = [d["function"] for d in toolbox.definitions]
+    assert all(d["type"] == "function" for d in toolbox.definitions)
+    assert [f["name"] for f in functions] == ["search_products", "get_order", "register_complaint"]
+    for function in functions:
+        assert function["parameters"]["type"] == "object"
         # session data is never a parameter the model can set
-        assert "phone" not in definition["input_schema"]["properties"]
+        assert not {"phone", "message_id"} & set(function["parameters"]["properties"])
 
 
 def test_search_products_returns_prices_from_code(toolbox):

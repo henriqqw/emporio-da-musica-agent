@@ -1,14 +1,13 @@
 """System prompt (spec section 6, ADR-10).
 
-Two blocks: a static one (persona, rules, full policy manual) marked for prompt
-caching, and a small dynamic one with the current time. Nothing variable may go
-into the static block, or the cache prefix breaks on every request.
+One system message: the static part (persona, rules, full policy manual) first and a
+small dynamic part (current time) last. Nothing variable may go into the static part,
+or providers with automatic prefix caching cannot reuse it.
 """
 
 from datetime import datetime
 from functools import cache
 from pathlib import Path
-from typing import Any
 
 from emporio.config import PROJECT_ROOT
 from emporio.store_hours import is_open, next_opening
@@ -91,15 +90,8 @@ def static_instructions(policies_path: Path = POLICIES_PATH) -> str:
     return _INSTRUCTIONS + policies_path.read_text(encoding="utf-8")
 
 
-def system_blocks(now: datetime, customer_name: str | None = None) -> list[dict[str, Any]]:
-    return [
-        {
-            "type": "text",
-            "text": static_instructions(),
-            "cache_control": {"type": "ephemeral"},
-        },
-        {"type": "text", "text": dynamic_context(now, customer_name)},
-    ]
+def system_prompt(now: datetime, customer_name: str | None = None) -> str:
+    return f"{static_instructions()}\n\n{dynamic_context(now, customer_name)}"
 
 
 def dynamic_context(now: datetime, customer_name: str | None = None) -> str:

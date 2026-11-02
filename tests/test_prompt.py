@@ -1,21 +1,22 @@
 from datetime import datetime
 
 from emporio.config import STORE_TZ
-from emporio.prompt import dynamic_context, static_instructions, system_blocks
+from emporio.prompt import dynamic_context, static_instructions, system_prompt
 
 WEDNESDAY_AFTERNOON = datetime(2026, 3, 25, 14, 30, tzinfo=STORE_TZ)
 SATURDAY_EVENING = datetime(2026, 3, 28, 20, 0, tzinfo=STORE_TZ)
 
 
-def test_static_block_is_cached_and_identical_across_requests():
-    first = system_blocks(WEDNESDAY_AFTERNOON, "Ana")
-    second = system_blocks(SATURDAY_EVENING)
-    assert first[0] == second[0]
-    assert first[0]["cache_control"] == {"type": "ephemeral"}
-    assert "cache_control" not in first[1]
+def test_static_part_comes_first_and_is_identical_across_requests():
+    first = system_prompt(WEDNESDAY_AFTERNOON, "Ana")
+    second = system_prompt(SATURDAY_EVENING)
+    static = static_instructions()
+    assert first.startswith(static)
+    assert second.startswith(static)
+    assert first != second
 
 
-def test_static_block_contains_the_whole_manual():
+def test_static_part_contains_the_whole_manual():
     text = static_instructions()
     assert "Rua 14 de Maio, 3200" in text
     assert "## 10. Disposições finais" in text
