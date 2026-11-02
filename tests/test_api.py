@@ -1,14 +1,10 @@
-from datetime import date
-
 import pytest
 from fastapi.testclient import TestClient
 
 from emporio.api import create_app
-from emporio.config import PROJECT_ROOT, Settings
 from emporio.service import build_chat_service
+from tests.constants import ANA_PHONE as PHONE
 from tests.fakes import FakeClient, text_response
-
-PHONE = "(67) 99654-7821"
 
 
 @pytest.fixture
@@ -17,14 +13,7 @@ def llm():
 
 
 @pytest.fixture
-def api(llm, tmp_path):
-    settings = Settings(
-        model="fake-model",
-        reference_date=date(2026, 3, 25),
-        session_ttl_minutes=30,
-        data_dir=PROJECT_ROOT / "data",
-        complaints_path=tmp_path / "complaints.jsonl",
-    )
+def api(llm, settings):
     return TestClient(create_app(build_chat_service(settings, llm)))
 
 

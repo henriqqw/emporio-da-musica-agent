@@ -55,7 +55,7 @@ def test_no_alternatives_when_something_found_is_sellable(catalog):
     assert catalog.search(query="takamine gd20").alternatives == ()
 
 
-def test_alternatives_by_type(catalog):
+def test_search_by_type_finds_every_seven_string_guitar(catalog):
     result = catalog.search(query="7 cordas")
     sellable = [o.product.id for o in result.offers if o.sellable]
     assert set(sellable) == {109, 110, 111, 112}

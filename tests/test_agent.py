@@ -1,7 +1,6 @@
 """Agent loop driven by a scripted fake client: no network, no API key."""
 
 import json
-from datetime import datetime
 
 import httpx
 import openai
@@ -17,21 +16,11 @@ from emporio.agent import (
     TOOL_LIMIT,
     Agent,
 )
-from emporio.catalog import Catalog
-from emporio.complaints import ComplaintStore
-from emporio.config import STORE_TZ
-from emporio.orders import OrderService
-from emporio.tools import Toolbox, ToolContext
+from emporio.tools import ToolContext
+from tests.constants import ANA_PHONE, STORE_NOW
 from tests.fakes import FakeClient, filtered_response, text_response, tool_response
 
-CONTEXT = ToolContext(
-    phone="67996547821", message_id="m1", now=datetime(2026, 3, 25, 14, 30, tzinfo=STORE_TZ)
-)
-
-
-@pytest.fixture
-def toolbox(store, tmp_path):
-    return Toolbox(Catalog(store), OrderService(store), ComplaintStore(tmp_path / "c.jsonl"))
+CONTEXT = ToolContext(phone=ANA_PHONE, message_id="m1", now=STORE_NOW)
 
 
 def _agent(client, toolbox, reasoning_effort=None):
@@ -102,7 +91,7 @@ def test_invalid_tool_call_goes_back_as_error(toolbox, arguments):
     assert reply.text == "Me conta qual instrumento você procura?"
 
 
-def test_stops_after_max_tool_rounds_without_running_the_extra_call(toolbox, tmp_path):
+def test_stops_after_max_tool_rounds_without_running_the_extra_call(toolbox, complaints_path):
     searches = [tool_response("search_products", {"query": "violão"}, f"c{i}") for i in range(5)]
     # the model asks for a write after the round limit: it must not happen silently
     complaint = tool_response(
@@ -116,7 +105,7 @@ def test_stops_after_max_tool_rounds_without_running_the_extra_call(toolbox, tmp
     assert reply.text == FALLBACK_REPLY
     assert len(client.requests) == MAX_TOOL_ROUNDS + 1
     assert reply.tools_called == ["search_products"] * MAX_TOOL_ROUNDS
-    assert not (tmp_path / "c.jsonl").exists()
+    assert not complaints_path.exists()
     # the unexecuted call is not left in the history either
     assert history[-1]["role"] == "tool"
 

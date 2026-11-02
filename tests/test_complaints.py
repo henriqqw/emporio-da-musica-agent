@@ -5,8 +5,7 @@ import pytest
 
 from emporio.complaints import ComplaintStore, response_deadline
 from emporio.config import STORE_TZ
-
-WEDNESDAY = datetime(2026, 3, 25, 14, 30, tzinfo=STORE_TZ)
+from tests.constants import STORE_NOW as WEDNESDAY
 
 
 @pytest.fixture

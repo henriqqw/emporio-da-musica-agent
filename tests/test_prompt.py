@@ -4,8 +4,8 @@ import pytest
 
 from emporio.config import STORE_TZ
 from emporio.prompt import display_name, dynamic_context, static_instructions, system_prompt
+from tests.constants import STORE_NOW as WEDNESDAY_AFTERNOON
 
-WEDNESDAY_AFTERNOON = datetime(2026, 3, 25, 14, 30, tzinfo=STORE_TZ)
 SATURDAY_EVENING = datetime(2026, 3, 28, 20, 0, tzinfo=STORE_TZ)
 
 

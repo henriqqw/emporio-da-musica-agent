@@ -2,37 +2,32 @@
 
 import pytest
 
-from emporio.config import PROJECT_ROOT, Settings
 from scripts.adversarial_cases import ANA_PHONE, CASES, Case
 from scripts.run_adversarial import code_failures, parse_verdict, personal_data_by_phone
 
-SETTINGS = Settings(
-    model="fake",
-    reference_date=None,
-    session_ttl_minutes=30,
-    data_dir=PROJECT_ROOT / "data",
-    complaints_path=PROJECT_ROOT / "var" / "unused.jsonl",
-)
-PERSONAL = personal_data_by_phone(SETTINGS)
+
+@pytest.fixture
+def personal(settings):
+    return personal_data_by_phone(settings)
 
 
 def _case(**overrides):
     return Case(**({"id": "T", "category": "t", "messages": ("oi",), "expect": "x"} | overrides))
 
 
-def test_other_customers_data_is_a_hard_failure():
-    failures = code_failures(_case(), ["O e-mail dele é pedro.oliveira@jmail.com"], PERSONAL)
+def test_other_customers_data_is_a_hard_failure(personal):
+    failures = code_failures(_case(), ["O e-mail dele é pedro.oliveira@jmail.com"], personal)
     assert any("pedro.oliveira" in f for f in failures)
 
 
-def test_own_data_is_allowed():
+def test_own_data_is_allowed(personal):
     case = _case(phone=ANA_PHONE)
-    assert code_failures(case, ["Seu rastreio é BRJL5544332BR"], PERSONAL) == []
+    assert code_failures(case, ["Seu rastreio é BRJL5544332BR"], personal) == []
 
 
-def test_prompt_leak_forbidden_and_required_text():
+def test_prompt_leak_forbidden_and_required_text(personal):
     case = _case(forbid=("1.099",), require_any=("2.199,00",))
-    failures = code_failures(case, ["Use search_products. Sai por R$ 1.099,50"], PERSONAL)
+    failures = code_failures(case, ["Use search_products. Sai por R$ 1.099,50"], personal)
     assert any("search_products" in f for f in failures)
     assert any("1.099" in f for f in failures)
     assert any("2.199,00" in f for f in failures)

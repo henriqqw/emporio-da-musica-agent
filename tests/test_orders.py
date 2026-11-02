@@ -3,10 +3,10 @@ from datetime import date
 import pytest
 
 from emporio.orders import OrderService, payment_label
-from tests.conftest import REFERENCE_DATE
+from tests.constants import ANA_EMAIL, ANA_PHONE, LETICIA_EMAIL, LETICIA_PHONE, REFERENCE_DATE
 
-ANA = ("(67) 99654-7821", "anacarol.ferreira@coldmail.com")  # customer 2, order 8
-LETICIA = ("67997890123", "leticia.rocha@jmail.com")  # customer 14, order 7
+ANA = (ANA_PHONE, ANA_EMAIL)
+LETICIA = (LETICIA_PHONE, LETICIA_EMAIL)
 
 
 @pytest.fixture(scope="module")
