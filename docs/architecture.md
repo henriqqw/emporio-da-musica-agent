@@ -163,8 +163,20 @@ The demo channel is a FastAPI endpoint plus one static page. Replies already fol
 WhatsApp formatting (short text, `*bold*`, `_italic_`, no tables or headings, one question
 per message), enforced by the prompt and a small sanitizer.
 
-**Consequences.** A WhatsApp adapter (webhook → `IncomingMessage` → `handle` → send
-text) needs no change in the core; it is described in the README, not implemented.
+**Consequences.** A WhatsApp adapter needs no change in the core. It is not implemented
+(it needs a business account and webhook hosting an evaluator could not reproduce); it
+would be one module next to `api.py`:
+
+1. **Webhook** (FastAPI router) receives the provider's POST (Meta WhatsApp Cloud API,
+   Twilio, etc.), **verifies the signature**, answers 200 at once and processes the
+   message in the background (providers retry slow webhooks).
+2. **Map** the payload to `IncomingMessage`: `phone` = sender number, `message_id` = the
+   provider's message id (used to drop redeliveries), `customer_name` = profile name.
+3. **Call** `ChatService.handle(...)`, unchanged.
+4. **Send** `OutgoingMessage.text` with the provider's send-message API; it is already
+   WhatsApp-formatted.
+5. Channel rules stay in the adapter: the 24-hour customer-service window (templates
+   outside it), media messages, and handing the conversation to a human after a complaint.
 
 ### ADR-07 Data: CSVs in memory
 
