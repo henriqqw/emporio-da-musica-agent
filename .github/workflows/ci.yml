@@ -18,5 +18,6 @@ jobs:
       - run: pip install -r requirements-dev.txt
       - run: ruff check .
       - run: ruff format --check .
+      - run: mypy
       # Tests never call the LLM, so no API key is needed here.
       - run: pytest
