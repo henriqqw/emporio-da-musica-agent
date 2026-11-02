@@ -9,11 +9,12 @@ import logging
 import time
 import uuid
 from collections.abc import Awaitable, Callable
+from typing import Any
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from emporio.config import PROJECT_ROOT, load_settings
 from emporio.phone import is_valid_phone, normalize_phone
@@ -51,9 +52,43 @@ MESSAGES_PER_PHONE = 10
 MESSAGES_PER_IP = 30
 TOO_MANY_MESSAGES = "Muitas mensagens em pouco tempo. Aguarde um minuto e tente de novo."
 
+API_DESCRIPTION = f"""
+Customer-service agent for **Empório da Música**, a musical-instruments store in Campo
+Grande/MS. This is the **demo channel**: it stands in for WhatsApp, where the phone number
+identifies the customer. Replies are in Brazilian Portuguese, already in WhatsApp format
+(`*bold*`, `_italic_`).
+
+**Try it:** `POST /chat` with any phone for catalog and policy questions. To see orders,
+use a test customer and give the registered e-mail when the agent asks:
+
+| Phone | E-mail | Scenario |
+|---|---|---|
+| (67) 99654-7821 | anacarol.ferreira@coldmail.com | late order → complaint with protocol |
+| (67) 99789-0123 | leticia.rocha@jmail.com | delivered order → return windows |
+
+**Limits:** {MESSAGES_PER_PHONE} messages per minute per phone and {MESSAGES_PER_IP} per IP
+(HTTP 429, checked before the LLM is called). The conversation is kept per phone and
+restarts after 30 idle minutes, or with `POST /chat/reset`.
+"""
+TAGS = [
+    {"name": "chat", "description": "Talk to the agent as a customer would on WhatsApp."},
+    {"name": "ops", "description": "Operational endpoints."},
+]
+
+
+class ErrorResponse(BaseModel):
+    detail: str = Field(description="Human-readable reason, in Portuguese.")
+
 
 class PhoneField(BaseModel):
-    phone: str = Field(examples=["(67) 99654-7821"])
+    phone: str = Field(
+        description=(
+            "The customer's WhatsApp number (DDD + number, with or without +55 and "
+            "punctuation). It identifies the session and the customer; it is never taken "
+            "from what the customer types."
+        ),
+        examples=["(67) 99654-7821"],
+    )
 
     @field_validator("phone")
     @classmethod
@@ -64,13 +99,68 @@ class PhoneField(BaseModel):
 
 
 class ChatRequest(PhoneField):
-    text: str = Field(min_length=1, max_length=2000)
-    message_id: str | None = Field(default=None, max_length=200)
-    customer_name: str | None = Field(default=None, max_length=60)
+    text: str = Field(
+        min_length=1,
+        max_length=2000,
+        description="What the customer wrote.",
+        examples=["Quanto custa o Takamine GD20?"],
+    )
+    message_id: str | None = Field(
+        default=None,
+        max_length=200,
+        description=(
+            "Unique id of the message (on WhatsApp, the provider's message id). Optional "
+            "here: generated when omitted. The same id never opens two complaints."
+        ),
+        examples=["wamid.HBgMNTU2Nzk5NjU0NzgyMQ"],
+    )
+    customer_name: str | None = Field(
+        default=None,
+        max_length=60,
+        description="WhatsApp profile name, used only to greet; sanitized before use.",
+        examples=["Ana Carolina"],
+    )
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "phone": "(67) 99654-7821",
+                    "text": "Quanto custa o Takamine GD20?",
+                    "customer_name": "Ana Carolina",
+                }
+            ]
+        }
+    )
 
 
 class ChatResponse(BaseModel):
-    reply: str
+    reply: str = Field(
+        description=(
+            "The agent's answer, in WhatsApp format. If the LLM provider fails, a polite "
+            "apology with the store's contacts (still HTTP 200)."
+        ),
+        examples=[
+            "O *Takamine GD20 Dreadnought Natural* custa R$ 2.199,00, ou R$ 2.089,05 no PIX, "
+            "e você pode parcelar em até 12x de R$ 183,25 sem juros."
+        ],
+    )
+
+
+class HealthResponse(BaseModel):
+    status: str = Field(examples=["ok"])
+
+
+RATE_LIMITED: dict[int | str, dict[str, Any]] = {
+    429: {
+        "model": ErrorResponse,
+        "description": (
+            f"Too many messages: over {MESSAGES_PER_PHONE} per minute for this phone or "
+            f"{MESSAGES_PER_IP} for this IP. The LLM was not called."
+        ),
+        "content": {"application/json": {"example": {"detail": TOO_MANY_MESSAGES}}},
+    }
+}
 
 
 def create_app(
@@ -79,7 +169,12 @@ def create_app(
     """App factory; tests inject a service built on a fake LLM client and a clock."""
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
     chat = service or build_chat_service(load_settings())
-    app = FastAPI(title="Empório da Música — assistente virtual")
+    app = FastAPI(
+        title="Empório da Música — assistente virtual",
+        version="1.0.0",
+        description=API_DESCRIPTION,
+        openapi_tags=TAGS,
+    )
     per_phone = RateLimiter(MESSAGES_PER_PHONE, window_seconds=60, clock=clock)
     per_ip = RateLimiter(MESSAGES_PER_IP, window_seconds=60, clock=clock)
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
@@ -98,11 +193,22 @@ def create_app(
     def index() -> FileResponse:
         return FileResponse(INDEX_HTML)
 
-    @app.get("/health")
-    def health() -> dict[str, str]:
-        return {"status": "ok"}
+    @app.get("/health", tags=["ops"], summary="Liveness check")
+    def health() -> HealthResponse:
+        return HealthResponse(status="ok")
 
-    @app.post("/chat")
+    @app.post(
+        "/chat",
+        tags=["chat"],
+        summary="Send a customer message and get the agent's reply",
+        description=(
+            "One turn of the conversation. The agent may look up the catalog, an order "
+            "(only after the customer gives the registered e-mail) or register a complaint "
+            "before answering. Prices, dates and protocols come from code, not from the "
+            "model."
+        ),
+        responses=RATE_LIMITED,
+    )
     def post_chat(request: ChatRequest, http: Request) -> ChatResponse:
         client_ip = http.client.host if http.client else "unknown"
         if not per_ip.allow(client_ip) or not per_phone.allow(normalize_phone(request.phone)):
@@ -116,7 +222,13 @@ def create_app(
         )
         return ChatResponse(reply=chat.handle(message).text)
 
-    @app.post("/chat/reset", status_code=204)
+    @app.post(
+        "/chat/reset",
+        status_code=204,
+        tags=["chat"],
+        summary="Start a new conversation for a phone",
+        description="Forgets the conversation history of this phone (demo convenience).",
+    )
     def reset_chat(request: PhoneField) -> None:
         chat.reset(request.phone)
 

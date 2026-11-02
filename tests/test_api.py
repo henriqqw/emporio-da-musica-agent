@@ -113,3 +113,14 @@ def test_api_docs_get_a_policy_that_lets_swagger_load(api):
     assert "frame-ancestors 'none'" in csp
     # the chat page keeps the strict one
     assert "cdn.jsdelivr.net" not in api.get("/").headers["content-security-policy"]
+
+
+def test_openapi_documents_the_contract(api):
+    spec = api.get("/openapi.json").json()
+    chat = spec["paths"]["/chat"]["post"]
+    assert chat["tags"] == ["chat"]
+    assert {"200", "422", "429"} <= set(chat["responses"])  # the rate limit is documented
+    body = spec["components"]["schemas"]["ChatRequest"]
+    assert all(field.get("description") for field in body["properties"].values())
+    assert spec["info"]["version"] == "1.0.0"
+    assert "/" not in spec["paths"]  # the chat page is not an API endpoint
