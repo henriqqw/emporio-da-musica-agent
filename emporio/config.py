@@ -20,6 +20,7 @@ class Settings:
     session_ttl_minutes: int
     data_dir: Path
     complaints_path: Path
+    has_credentials: bool = False
 
     def now(self) -> datetime:
         """Current store time; the date part is REFERENCE_DATE when set."""
@@ -42,6 +43,7 @@ def load_settings() -> Settings:
         session_ttl_minutes=int(os.getenv("SESSION_TTL_MINUTES", "30")),
         data_dir=_project_path(os.getenv("DATA_DIR", "data")),
         complaints_path=_project_path(os.getenv("COMPLAINTS_PATH", "var/complaints.jsonl")),
+        has_credentials=bool(os.getenv("ANTHROPIC_API_KEY") or os.getenv("ANTHROPIC_AUTH_TOKEN")),
     )
 
 

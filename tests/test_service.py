@@ -1,5 +1,7 @@
 from datetime import date, datetime
 
+import pytest
+
 from emporio.config import PROJECT_ROOT, STORE_TZ, Settings
 from emporio.service import IncomingMessage, build_chat_service
 from tests.fakes import FakeClient, text_response, tool_response
@@ -67,6 +69,11 @@ def test_reset_starts_a_new_conversation(tmp_path):
     service.reset("67996547821")
     service.handle(_message("oi"))
     assert len(client.requests[1]["messages"]) == 1
+
+
+def test_missing_api_key_fails_at_startup(tmp_path):
+    with pytest.raises(RuntimeError, match="ANTHROPIC_API_KEY"):
+        build_chat_service(_settings(tmp_path))
 
 
 def test_store_timezone_is_used(tmp_path):
