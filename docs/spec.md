@@ -206,7 +206,9 @@ complaint was registered after a protocol came back; give protocol and deadline.
 Anthropic Python SDK, manual tool-use loop (`while stop_reason == "tool_use"`), max 5
 tool rounds per customer message, then a fallback apology. Tool exceptions are returned
 as `tool_result` with `is_error: true`. Model and effort come from env
-(`ANTHROPIC_MODEL`, default `claude-opus-5-5`; `ANTHROPIC_EFFORT`, default `low`).
+(`ANTHROPIC_MODEL`, default `claude-haiku-5-5`; `ANTHROPIC_EFFORT`, default `low`).
+A `refusal` stop reason (Haiku 5.5 has no server-side fallback) or an API error gives
+the fixed pt-BR apology with the human contacts.
 The final text goes through `whatsapp_format.sanitize()` (converts `**x**` → `*x*`,
 drops `#` headings and Markdown links/tables) as a safety net; the prompt is the first
 line of defence.
@@ -216,7 +218,7 @@ line of defence.
 | Var | Default | Purpose |
 |---|---|---|
 | `ANTHROPIC_API_KEY` | — (required) | provider credentials |
-| `ANTHROPIC_MODEL` | `claude-opus-5-5` | model id |
+| `ANTHROPIC_MODEL` | `claude-haiku-5-5` | model id |
 | `ANTHROPIC_EFFORT` | `low` | reasoning effort |
 | `REFERENCE_DATE` | real date | "today" for date logic (R-DATE-1) |
 | `SESSION_TTL_MINUTES` | `30` | session inactivity timeout |
@@ -286,5 +288,9 @@ persistence of sessions, authentication of the demo UI, WhatsApp integration
 - **Q1 (decided)** Contacts: phone (67) 3341-4444, WhatsApp (67) 3321-4500 (R-INFO-2).
 - **Q2 (decided)** Complaints are registered by a third tool, `register_complaint`,
   the single write operation (section 5.3, R-CMP-*).
-- **Q3 (open)** Model: default `claude-opus-5-5` at low effort, overridable by env (e.g.
-  `claude-haiku-5-5` for cost/latency).
+- **Q3 (decided)** Model: `claude-haiku-5-5` at low effort. The market pattern for
+  support chat is a small, cheap default model; here the hard parts (prices, dates,
+  identification, protocol) are deterministic code, so the model mostly writes the
+  reply. It is ~15–40x cheaper per message than Opus 5.5. It must pass the acceptance
+  scenarios (section 10) before the examples are recorded; if not, fix the prompt
+  first, then fall back to `claude-sonnet-5-5` via `ANTHROPIC_MODEL` (no code change).

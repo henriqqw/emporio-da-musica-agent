@@ -15,7 +15,7 @@ One commit per step, each leaving the project runnable and tested. No force-push
 | 8 | `feat: system prompt with policy manual` | `knowledge/policies.md`, `prompt.py` | manual reviewed line by line against the PDF |
 | 9 | `feat: agent loop, sessions and WhatsApp formatting` | `agent.py`, `sessions.py`, `whatsapp_format.py`, `service.py` | tests with a fake client: tool round-trip, max rounds, TTL, sanitizer (A15) |
 | 10 | `feat: demo web channel` | `api.py`, `static/index.html` | runs locally; manual smoke test in the browser |
-| 11 | `docs: example conversations` | `docs/examples/*.md` (4–5, from real runs: A1/A2, A7+A11, A8+A16, A10, A12) | transcripts captured from the running app |
+| 11 | `docs: example conversations` | `scripts/run_scenarios.py` runs the acceptance conversations against the live model through `ChatService` and writes `docs/examples/*.md` (4–5: A1/A2, A7+A11, A8+A16, A10, A12) | Haiku 5.5 passes the scenarios (reviewed by hand); transcripts are real runs |
 | 12 | `docs: README` | setup, decisions, assumptions, limitations, AI-assistant workflow, WhatsApp adapter design | follows the case's README checklist |
 | 13 | `fix: audit against spec` | walk sections 2–10 of the spec and the acceptance table, fix gaps | every scenario traced to a test or an example |
 
