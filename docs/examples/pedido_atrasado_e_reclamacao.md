@@ -18,7 +18,7 @@
 
 > Oi, Ana Carolina! Tudo bem?
 > 
-> Para que eu possa conferir como está a entrega e te passar os detalhes do seu pedido, você poderia me informar o seu e-mail cadastrado?
+> Para eu conferir como está o seu pedido por aqui, por favor, me informa o seu e-mail cadastrado?
 
 **Cliente:** anacarol.ferreira@coldmail.com
 
@@ -26,17 +26,19 @@
 
 **Assistente:**
 
-> Ana, vi aqui que o seu pedido número 8, feito em 15/02/2026 com o ukulele Kala KA-C Concert Mogno, foi enviado com a transportadora, mas infelizmente ele está com um atraso na entrega (a previsão era até 28/02/2026). O código de rastreio é o BRJL5544332BR.
+> Ana, o pedido número 8, com o ukulelê Kala KA-C Concert Mogno, foi enviado no dia 15/02/2026. O código de rastreamento é o BRJL5544332BR.
 > 
-> Peço desculpas por esse transtorno com o prazo! Quer que eu registre uma reclamação para a nossa equipe verificar o que aconteceu com a entrega?
+> O prazo estimado de entrega era para o dia 28/02/2026, então ele está com atraso e peço sinceras desculpas por isso.
+> 
+> Posso registrar uma reclamação para a nossa equipe verificar o que aconteceu com a entrega?
 
 **Cliente:** Que absurdo, era pra ter chegado em fevereiro!
 
 **Assistente:**
 
-> Imagino a sua frustração, Ana. Tem toda razão em estar chateada com esse atraso, peço sinceras desculpas por isso.
+> Entendo perfeitamente a sua frustração, Ana. É realmente inaceitável esse atraso, e peço desculpas mais uma vez pelo transtorno.
 > 
-> Posso registrar uma reclamação para a nossa equipe verificar com urgência o que aconteceu com a transportadora e te dar um retorno?
+> Posso registrar uma reclamação formal para que nossa equipe investigue o que aconteceu com a entrega junto à transportadora?
 
 **Cliente:** Sim, pode registrar.
 
@@ -44,8 +46,6 @@
 
 **Assistente:**
 
-> Prontinho, Ana. Registrei a reclamação sob o protocolo *REC-20260325-0001*.
+> Prontinho, Ana. Registrei a sua reclamação sob o protocolo *REC-20260325-0001*. Nossa equipe vai verificar o que houve com a transportadora e entraremos em contato com você até o dia *26/03/2026 às 14:30*.
 > 
-> Nossa equipe vai verificar o que houve com a transportadora e entraremos em contato com você até o dia 26/03/2026 às 14:30.
-> 
-> Se precisar de mais alguma coisa enquanto isso, é só me chamar!
+> Fico à disposição se precisar de algo mais por enquanto!

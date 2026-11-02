@@ -18,13 +18,15 @@
 
 **Assistente:**
 
-> O _Giannini GF-3D Dreadnought Sunburst_ está esgotado no momento, mas temos outras opções parecidas de violões dreadnought disponíveis:
+> O *Giannini GF-3D Dreadnought Sunburst* consta no nosso catálogo, mas no momento ele está esgotado.
 > 
-> • *Tagima Woodstock Dreadnought Natural* — R$ 899,00 (ou R$ 854,05 no PIX, ou até 8x de R$ 112,38)
-> • *Yamaha FG800 Dreadnought Natural* — R$ 1.299,00 (ou R$ 1.234,05 no PIX, ou até 12x de R$ 108,25)
-> • *Takamine GD20 Dreadnought Natural* — R$ 2.199,00 (ou R$ 2.089,05 no PIX, ou até 12x de R$ 183,25)
+> Para te ajudar, separei estas alternativas disponíveis:
 > 
-> Quer saber mais detalhes sobre algum deles?
+> • *Tagima Woodstock Dreadnought Natural* — R$ 899,00 (ou em até 8x de R$ 112,38 no cartão, ou R$ 854,05 no PIX)
+> • *Yamaha FG800 Dreadnought Natural* — R$ 1.299,00 (ou em até 12x de R$ 108,25 no cartão, ou R$ 1.234,05 no PIX)
+> • *Takamine GD20 Dreadnought Natural* — R$ 2.199,00 (ou em até 12x de R$ 183,25 no cartão, ou R$ 2.089,05 no PIX)
+> 
+> Gostaria de ver detalhes de alguma dessas opções?
 
 **Cliente:** E o Crafter HT-100, quanto tá? Dá pra ter o desconto do PIX também?
 
@@ -32,6 +34,8 @@
 
 **Assistente:**
 
-> O _Crafter HT-100 Folk Aço Natural_ está com o preço de tabela de R$ 2.399,00, mas com uma promoção de Desconto Exclusivo de 18%, saindo por *R$ 1.967,18* (ou em até 12x de R$ 163,93 sem juros no cartão).
+> O *Crafter HT-100 Folk Aço Natural* está disponível por *R$ 1.967,18* em promoção especial de 18% de desconto (o preço original era R$ 2.399,00). Você pode parcelar no cartão em até 12x de R$ 163,93 sem juros.
 > 
-> Como ele já está com preço promocional, o desconto de 5% do PIX não é acumulativo, beleza? Quer aproveitar para garantir o seu?
+> Como ele já está com preço promocional, o desconto adicional do PIX de 5% não se acumula, combinado?
+> 
+> Posso te ajudar a incluir ele no pedido?

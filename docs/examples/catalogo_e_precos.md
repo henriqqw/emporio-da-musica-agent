@@ -18,21 +18,14 @@
 
 **Assistente:**
 
-> Oi, Rodrigo! Temos 12 modelos de violões até R$ 1.000,00. Aqui estão algumas opções:
+> Olá, Rodrigo! Temos 12 modelos de violões até R$ 1.000,00. Aqui estão algumas opções:
 > 
-> • *Tagima Memphis AC-39 Nylon Natural*
->   R$ 429,90 no cartão (até 5x de R$ 85,98) ou R$ 408,41 no PIX
+> • *Tagima Memphis AC-39 Nylon Natural* — R$ 429,90 (ou R$ 408,41 no PIX)
+> • *Rozini RC-104 Nylon Estudante* — R$ 459,90 (ou R$ 436,91 no PIX)
+> • *Shelby SN-100 Folk Aço Preto* — R$ 549,00 (ou R$ 521,55 no PIX)
+> • *Yamaha C40 Nylon Natural* — R$ 599,90 (ou R$ 569,91 no PIX)
 > 
-> • *Rozini RC-104 Nylon Estudante*
->   R$ 459,90 no cartão (até 5x de R$ 91,98) ou R$ 436,91 no PIX
-> 
-> • *Yamaha C40 Nylon Natural*
->   R$ 599,90 no cartão (até 6x de R$ 99,98) ou R$ 569,91 no PIX
-> 
-> • *Yamaha F310 Aço Natural*
->   R$ 699,90 no cartão (até 6x de R$ 116,65) ou R$ 664,91 no PIX
-> 
-> Quer ver os outros 8 modelos disponíveis nessa faixa de preço?
+> Gostaria de ver os outros modelos disponíveis nessa faixa de preço?
 
 **Cliente:** Quanto custa o Takamine GD20?
 
@@ -40,14 +33,14 @@
 
 **Assistente:**
 
-> O _Takamine GD20 Dreadnought Natural_ custa R$ 2.199,00 no cartão, podendo parcelar em até 12x de R$ 183,25 sem juros, ou R$ 2.089,05 à vista no PIX.
+> O *Takamine GD20 Dreadnought Natural* custa R$ 2.199,00, ou R$ 2.089,05 no PIX à vista, e você também pode parcelar em até 12x sem juros no cartão.
 > 
-> Quer saber mais detalhes sobre ele ou prefere ver outras opções?
+> Quer saber mais detalhes sobre ele?
 
 **Cliente:** Ele ainda tá naquela promoção de oferta especial?
 
 **Assistente:**
 
-> O _Takamine GD20 Dreadnought Natural_ não está mais com aquela promoção de oferta especial vigente, Rodrigo. No momento ele está pelo preço normal de R$ 2.199,00 no cartão (em até 12x de R$ 183,25) ou R$ 2.089,05 à vista no PIX.
+> O *Takamine GD20* não está mais com aquela promoção ativa. O preço atual dele é R$ 2.199,00 (ou R$ 2.089,05 no PIX).
 > 
-> Quer que eu te mostre outros modelos que estejam em promoção?
+> Tem algum outro instrumento que você gostaria de pesquisar?
