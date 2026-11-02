@@ -1,16 +1,20 @@
 """Run the acceptance conversations against the live model and save transcripts.
 
-Usage:  python -m scripts.run_scenarios            (needs LLM_API_KEY in .env)
-        python -m scripts.run_scenarios devolucao  (only the named scenario)
+Usage:  python -m scripts.run_scenarios                                (needs LLM_API_KEY)
+        python -m scripts.run_scenarios devolucao_por_arrependimento   (one scenario)
 
 Each scenario goes through ChatService exactly like a real channel would. The clock
 is fixed to Wednesday 25/03/2026 14:30 (store open) so runs are reproducible, and
 complaints go to a throwaway file. Output: docs/examples/<name>.md. The transcripts
 are then reviewed by hand against the spec's acceptance table (section 10).
+
+Free tiers limit requests per minute (Gemini Flash-Lite: ~15), and one turn can take
+2-3 requests, so the script pauses between turns like a customer typing would.
 """
 
 import sys
 import tempfile
+import time
 import uuid
 from dataclasses import dataclass, replace
 from datetime import datetime
@@ -21,6 +25,7 @@ from emporio.service import IncomingMessage, build_chat_service
 
 FIXED_NOW = datetime(2026, 3, 25, 14, 30, tzinfo=STORE_TZ)
 EXAMPLES_DIR = PROJECT_ROOT / "docs" / "examples"
+PAUSE_BETWEEN_TURNS_SECONDS = 10
 
 
 @dataclass(frozen=True)
@@ -92,7 +97,7 @@ SCENARIOS = (
         messages=(
             "Oi, cadê meu pedido?",
             "anacarol.ferreira@coldmail.com",
-            "Que absurdo, era pra ter chegado em fevereiro! Quero fazer uma reclamação.",
+            "Que absurdo, era pra ter chegado em fevereiro!",
             "Sim, pode registrar.",
         ),
     ),
@@ -137,6 +142,7 @@ def main(selected: list[str]) -> None:
                     )
                 )
                 turns.append((text, reply.text, reply.tools_used))
+                time.sleep(PAUSE_BETWEEN_TURNS_SECONDS)
             path = EXAMPLES_DIR / f"{scenario.name}.md"
             path.write_text(_markdown(scenario, settings.model, turns), encoding="utf-8")
             print(f"wrote {path.relative_to(PROJECT_ROOT)}")
