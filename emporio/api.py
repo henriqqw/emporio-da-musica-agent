@@ -52,24 +52,10 @@ MESSAGES_PER_PHONE = 10
 MESSAGES_PER_IP = 30
 TOO_MANY_MESSAGES = "Muitas mensagens em pouco tempo. Aguarde um minuto e tente de novo."
 
-API_DESCRIPTION = f"""
-Customer-service agent for **Empório da Música**, a musical-instruments store in Campo
-Grande/MS. This is the **demo channel**: it stands in for WhatsApp, where the phone number
-identifies the customer. Replies are in Brazilian Portuguese, already in WhatsApp format
-(`*bold*`, `_italic_`).
-
-**Try it:** `POST /chat` with any phone for catalog and policy questions. To see orders,
-use a test customer and give the registered e-mail when the agent asks:
-
-| Phone | E-mail | Scenario |
-|---|---|---|
-| (67) 99654-7821 | anacarol.ferreira@coldmail.com | late order → complaint with protocol |
-| (67) 99789-0123 | leticia.rocha@jmail.com | delivered order → return windows |
-
-**Limits:** {MESSAGES_PER_PHONE} messages per minute per phone and {MESSAGES_PER_IP} per IP
-(HTTP 429, checked before the LLM is called). The conversation is kept per phone and
-restarts after 30 idle minutes, or with `POST /chat/reset`.
-"""
+API_DESCRIPTION = (
+    "Customer-service agent for Empório da Música. This demo channel stands in for "
+    "WhatsApp: the phone number identifies the customer. See the README to try it."
+)
 TAGS = [
     {"name": "chat", "description": "Talk to the agent as a customer would on WhatsApp."},
     {"name": "ops", "description": "Operational endpoints."},
