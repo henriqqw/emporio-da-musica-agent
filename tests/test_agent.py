@@ -45,6 +45,8 @@ def test_plain_answer(toolbox):
     system, user = request["messages"]
     assert system["role"] == "system"
     assert "Ana" in system["content"]
+    assert "Categorias com produtos disponíveis hoje: Guitarras" in system["content"]
+    assert "Sopro" not in system["content"].split("# Contexto desta conversa")[1]
     assert user == {"role": "user", "content": "oi"}
 
 

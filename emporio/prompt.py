@@ -5,6 +5,7 @@ small dynamic part (current time) last. Nothing variable may go into the static 
 or providers with automatic prefix caching cannot reuse it.
 """
 
+from collections.abc import Sequence
 from datetime import datetime
 from functools import cache
 from pathlib import Path
@@ -46,9 +47,10 @@ transparência que ela não está mais vigente e mostre o preço atual.
 produto estiver esgotado, descontinuado ou em breve, diga isso e, na mesma resposta, \
 apresente as opções do campo alternatives (com preço), sem só perguntar se o cliente quer \
 ver alternativas.
-- Se a busca não encontrar nada, diga que no momento não temos essa opção e, se fizer \
-sentido, cite o que temos usando categories_in_stock. O manual cita categorias que hoje não \
-têm produtos: nunca diga que vendemos algo fora de categories_in_stock. Não invente \
+- Para dizer o que a loja vende, use só as "categorias com produtos disponíveis hoje" do \
+contexto da conversa (ou categories_in_stock de uma busca vazia). O manual cita categorias \
+que hoje não têm produtos: nunca diga que vendemos algo fora dessa lista.
+- Se a busca não encontrar nada, diga que no momento não temos essa opção. Não invente \
 produtos, marcas ou modelos.
 
 # Pedidos e identificação
@@ -112,15 +114,25 @@ def static_instructions(policies_path: Path = POLICIES_PATH) -> str:
     return _INSTRUCTIONS + policies_path.read_text(encoding="utf-8")
 
 
-def system_prompt(now: datetime, customer_name: str | None = None) -> str:
-    return f"{static_instructions()}\n\n{dynamic_context(now, customer_name)}"
+def system_prompt(
+    now: datetime, customer_name: str | None = None, categories_in_stock: Sequence[str] = ()
+) -> str:
+    dynamic = dynamic_context(now, customer_name, categories_in_stock)
+    return f"{static_instructions()}\n\n{dynamic}"
 
 
-def dynamic_context(now: datetime, customer_name: str | None = None) -> str:
+def dynamic_context(
+    now: datetime, customer_name: str | None = None, categories_in_stock: Sequence[str] = ()
+) -> str:
     lines = [
         "# Contexto desta conversa",
         f"- Agora: {_WEEKDAYS[now.weekday()]}, {now:%d/%m/%Y %H:%M} (horário de Campo Grande).",
     ]
+    if categories_in_stock:
+        # From the data on every request, so the agent never lists the manual's categories
+        # that have no products (wind, orchestral strings).
+        categories = ", ".join(categories_in_stock)
+        lines.append(f"- Categorias com produtos disponíveis hoje: {categories}.")
     if is_open(now):
         lines.append("- A loja está aberta e a equipe está atendendo.")
     else:

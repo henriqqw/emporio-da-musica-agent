@@ -55,7 +55,8 @@ class Agent:
         `history` is the session's conversation and is only ever appended to; the system
         prompt is rebuilt on every request because it carries the current time.
         """
-        system = {"role": "system", "content": system_prompt(context.now, customer_name)}
+        prompt = system_prompt(context.now, customer_name, self._toolbox.categories_in_stock())
+        system = {"role": "system", "content": prompt}
         reply = AgentReply(text="")
 
         for _ in range(MAX_TOOL_ROUNDS + 1):

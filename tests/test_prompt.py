@@ -29,6 +29,11 @@ def test_dynamic_context_when_open():
     assert "Ana" in text
 
 
+def test_dynamic_context_lists_categories_in_stock():
+    text = dynamic_context(WEDNESDAY_AFTERNOON, categories_in_stock=["Violões", "Ukuleles"])
+    assert "Categorias com produtos disponíveis hoje: Violões, Ukuleles." in text
+
+
 def test_dynamic_context_when_closed_says_when_team_is_back():
     text = dynamic_context(SATURDAY_EVENING)
     assert "fechada" in text

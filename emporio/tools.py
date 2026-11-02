@@ -106,6 +106,9 @@ class Toolbox:
         functions = (d["function"] for d in self.definitions)
         self._schemas = {f["name"]: f["parameters"] for f in functions}
 
+    def categories_in_stock(self) -> list[str]:
+        return self._catalog.categories_in_stock()
+
     def run(self, name: str, arguments: Any, context: ToolContext) -> dict[str, Any]:
         handlers = {
             "search_products": self._search_products,
@@ -228,7 +231,7 @@ def _offer_json(offer: Offer) -> dict[str, Any]:
         "promotion": (
             {
                 "name": promotion.name,
-                "discount_percent": promotion.discount_percent,
+                "discount": f"{promotion.discount_percent:g}%",  # "18%", not "18.0"
                 "price": format_brl(promotion.price),
             }
             if promotion
