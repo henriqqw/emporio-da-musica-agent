@@ -42,6 +42,7 @@ def test_search_products_returns_prices_from_code(toolbox):
         "price": "R$ 2.199,00",
         "max_installments": 12,
         "installment_value": "R$ 183,25",
+        "combined_payment_allowed": True,
     }
     assert gd20["promotion"] is None
 
@@ -51,6 +52,13 @@ def test_search_products_includes_alternatives_for_unavailable(toolbox):
     assert result["products"][0]["availability"] == "esgotado"
     assert len(result["alternatives"]) == 3
     assert "alternatives" not in toolbox.run("search_products", {"query": "gd20"}, _context())
+
+
+def test_combined_payment_is_decided_by_code(toolbox):
+    # A14: ukulele Kalani KAL-700T, R$ 359 -> R$ 323,10 with 10% off: below R$ 2.000
+    ukulele = toolbox.run("search_products", {"query": "KAL-700T"}, _context())["products"][0]
+    assert ukulele["card"]["price"] == "R$ 323,10"
+    assert ukulele["card"]["combined_payment_allowed"] is False
 
 
 def test_search_products_needs_a_filter(toolbox):

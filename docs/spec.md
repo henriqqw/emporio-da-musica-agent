@@ -128,7 +128,8 @@ Output per product:
   "promotion": null,                       // or {"name": "...", "discount_percent": 18, "price": "R$ 1.967,18"}
   "expired_promotions": ["Oferta Especial (12%)"],
   "pix_price": "R$ 2.089,05",              // null when a promotion is active (R-PRICE-4)
-  "card": {"price": "R$ 2.199,00", "max_installments": 12, "installment_value": "R$ 183,25"}
+  "card": {"price": "R$ 2.199,00", "max_installments": 12, "installment_value": "R$ 183,25",
+           "combined_payment_allowed": true}       // PIX + card only above R$ 2.000 (R-PAY-3)
 }
 ```
 

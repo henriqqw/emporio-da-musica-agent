@@ -13,7 +13,7 @@ from typing import Any
 from emporio.catalog import Catalog, Offer
 from emporio.complaints import CATEGORIES, MAX_SUMMARY_LENGTH, ComplaintStore
 from emporio.orders import OrderService, OrderView, Window
-from emporio.pricing import format_brl
+from emporio.pricing import allows_combined_payment, format_brl
 
 
 class ToolError(Exception):
@@ -237,6 +237,8 @@ def _offer_json(offer: Offer) -> dict[str, Any]:
             "price": format_brl(price.card_price),
             "max_installments": price.max_installments,
             "installment_value": format_brl(price.installment_value),
+            # R-PAY-3: PIX + card only above R$ 2.000; decided here, not by the model
+            "combined_payment_allowed": allows_combined_payment(price.card_price),
         },
     }
 
