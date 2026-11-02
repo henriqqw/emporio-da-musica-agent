@@ -62,9 +62,14 @@ class ChatService:
 
 
 def build_chat_service(
-    settings: Settings, client: anthropic.Anthropic | None = None
+    settings: Settings,
+    client: anthropic.Anthropic | None = None,
+    clock: Callable[[], datetime] | None = None,
 ) -> ChatService:
-    """Wire the whole application from settings (composition root)."""
+    """Wire the whole application from settings (composition root).
+
+    `client` and `clock` are injectable for tests and reproducible scenario runs.
+    """
     if client is None and not settings.has_credentials:
         # Fail at startup, not on the first customer message.
         raise RuntimeError("ANTHROPIC_API_KEY is not set: copy .env.example to .env and fill it.")
@@ -72,4 +77,4 @@ def build_chat_service(
     toolbox = Toolbox(Catalog(store), OrderService(store), ComplaintStore(settings.complaints_path))
     agent = Agent(client or anthropic.Anthropic(), toolbox, settings.model, settings.effort)
     sessions = SessionStore(ttl=timedelta(minutes=settings.session_ttl_minutes))
-    return ChatService(agent, sessions, clock=settings.now)
+    return ChatService(agent, sessions, clock=clock or settings.now)
