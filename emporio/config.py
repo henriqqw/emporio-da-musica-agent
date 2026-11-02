@@ -34,9 +34,6 @@ class Settings:
             return real_now
         return datetime.combine(self.reference_date, real_now.time(), tzinfo=STORE_TZ)
 
-    def today(self) -> date:
-        return self.now().date()
-
 
 def load_settings() -> Settings:
     load_dotenv(PROJECT_ROOT / ".env")
