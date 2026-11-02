@@ -34,7 +34,8 @@ class IncomingMessage:
     channel: str  # "web" | "whatsapp"
     phone: str  # customer's phone = session identity
     text: str
-    message_id: str  # unique per message (deduplication, complaint idempotency)
+    message_id: str  # unique per message; complaint idempotency. Dropping redelivered
+    # messages belongs to the channel adapter (ADR-06), not implemented in the demo.
     customer_name: str | None = None  # e.g. WhatsApp profile name; only used to greet
 
 

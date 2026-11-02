@@ -179,8 +179,9 @@ and saying "the team will get back to you" without a record would be an empty pr
 - **R-CMP-4 [A]** "24 horas úteis" = 24 hours counted only on Monday–Friday (weekends
   skipped; holidays are not known). Friday 15:00 → Monday 15:00; Saturday 10:00 →
   Tuesday 00:00. Computed by code.
-- **R-CMP-5 [A]** Idempotent per `message_id`: the same incoming message never opens two
-  complaints (WhatsApp may redeliver webhooks).
+- **R-CMP-5 [A]** Idempotent per phone + `message_id`: the same incoming message never
+  opens two complaints (WhatsApp may redeliver webhooks), and an id reused by another
+  customer cannot return their protocol.
 - **R-CMP-6 [A]** The agent may only say the complaint was registered after the tool
   returned a protocol, and gives the protocol and the deadline to the customer.
 - **R-CMP-7 [A]** Real-time notification of the team and pausing the bot in that

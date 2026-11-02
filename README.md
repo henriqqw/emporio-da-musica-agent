@@ -9,7 +9,8 @@ complaints — and a polite "not with me" for everything else.
 
 - **Runs free**: Google Gemini's free tier by default, any OpenAI-compatible provider by
   changing three env vars.
-- **Tested without an API key**: unit tests for every module, CI (ruff + pytest) on every push.
+- **Tested without an API key**: unit tests for every module, CI (ruff + mypy + pytest) on
+  every push.
 - **Measured against manipulation**: 20 adversarial attacks, 20/20 passed with
   zero data or price leaks ([report](docs/evals/adversarial-final.md)).
 
@@ -18,8 +19,8 @@ complaints — and a polite "not with me" for everything else.
 | Read | What it shows |
 |---|---|
 | [`emporio/prompt.py`](emporio/prompt.py) | persona, scope as six jobs, the rules |
-| [`emporio/agent.py`](emporio/agent.py) | the tool-use loop (~140 lines, no framework) |
-| [`emporio/tools.py`](emporio/tools.py) | the three tools, argument validation, identity injected from the channel |
+| [`emporio/agent.py`](emporio/agent.py) | the tool-use loop (~170 lines, no framework) and its failure handling |
+| [`emporio/tools.py`](emporio/tools.py) | the three tools and identity injected from the channel ([validation](emporio/validation.py)) |
 | [`docs/architecture.md` §3](docs/architecture.md#3-decisions) | the decisions, one short record each |
 | [`docs/examples/`](docs/examples/) | five real conversations, reviewed against the spec |
 | [`docs/evals/`](docs/evals/) | manipulation attacks: baseline 17/20 → final 20/20 |

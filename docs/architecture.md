@@ -241,8 +241,14 @@ boundaries stay the same.
 - **LLM behaviour:** `scripts/run_scenarios.py` runs the acceptance conversations against
   the live model; the recorded runs become `docs/examples/`.
 - **Lint/format:** ruff (config in `pyproject.toml`).
-- **CI:** GitHub Actions runs ruff and pytest on every push.
-- **Typing:** type hints everywhere; no mypy gate (cost > benefit at this size).
+- **CI:** GitHub Actions runs ruff, mypy and pytest on every push.
+- **Typing:** type hints everywhere, checked by mypy (`check_untyped_defs`); the one
+  cast is the SDK call, where the history's plain wire-format dicts meet the SDK's
+  TypedDicts.
+- **Review:** an independent read-only review (a separate agent, not shown the author's
+  conclusions) found two high-severity issues (an extra tool round that could register
+  an untold complaint; prompt injection through the profile name) and several medium
+  ones; each was fixed in its own commit with a test.
 - **Logging:** standard `logging`; tool names, latency and errors are logged, message
   content and personal data are not (LGPD).
 - **Git:** small commits, one concern each, Conventional Commits messages, no force-push.
@@ -284,7 +290,8 @@ emporio/
   catalog.py          product search + availability
   orders.py           identification, status labels, after-sales windows
   complaints.py       ComplaintStore (JSONL), protocol, deadline
-  tools.py            tool schemas + dispatch
+  validation.py       tool-argument validation against the schemas, ToolError
+  tools.py            tool schemas, dispatch, serialization for the model
   prompt.py           system prompt builder
   agent.py            tool-use loop over an injected OpenAI-compatible client
   sessions.py         in-memory SessionStore with TTL
@@ -294,6 +301,7 @@ emporio/
   __main__.py         python -m emporio
 knowledge/policies.md policy manual transcribed from the PDF
 static/index.html     demo chat
-scripts/run_scenarios.py
-tests/
+scripts/run_scenarios.py     records docs/examples/ against the live model
+scripts/run_adversarial.py   adversarial eval (spec §10b), cases in adversarial_cases.py
+tests/                       unit tests; fakes.py, constants.py, shared fixtures in conftest.py
 ```

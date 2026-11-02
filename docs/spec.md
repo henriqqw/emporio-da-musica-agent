@@ -45,7 +45,7 @@ class IncomingMessage:
     channel: str              # "web" | "whatsapp"
     phone: str                # customer's phone = session identity
     text: str
-    message_id: str           # unique per message; reserved for deduplication
+    message_id: str           # unique per message; complaint idempotency (R-CMP-5)
     customer_name: str | None # e.g. WhatsApp profile name; used only to greet
 
 @dataclass(frozen=True)
@@ -58,8 +58,9 @@ class OutgoingMessage:
 HTTP (demo channel):
 
 - `POST /chat` body `{phone, text, message_id?, customer_name?}` → `{reply}`.
-  `message_id` defaults to a UUID if omitted. Validation: phone has 10–13 digits after
-  stripping non-digits; text 1–2000 chars. Errors → 422 (FastAPI default).
+  `message_id` defaults to a UUID if omitted. Validation: phone has 10–11 digits after
+  stripping non-digits and the +55 country code; text 1–2000 chars; profile name at most
+  60 chars. Errors → 422 (FastAPI default).
   LLM/provider failure → 200 with a fixed apology message in pt-BR (the customer never
   sees a stack trace), error logged.
 - `GET /` serves `static/index.html`: phone and optional name fields, a message box,
@@ -137,8 +138,10 @@ Output per product:
 }
 ```
 
-Pricing lives in a pure module (`pricing.py`): `promo_price`, `pix_price`,
-`max_installments`. No LLM arithmetic.
+Pricing lives in a pure module (`pricing.py`): `quote` (promotion, PIX, installments),
+`best_active_promotion`, `max_installments`, `allows_combined_payment`, `format_brl`.
+No LLM arithmetic. A search of stopwords only ("quero") with no other filter finds
+nothing, instead of browsing the whole catalog.
 
 ### 5.2 `get_order`
 
@@ -158,7 +161,7 @@ Output per order:
 ```json
 {
   "order_id": 7, "date": "03/02/2026", "status": "delivered",
-  "status_label": "entregue", "total": "R$ 159,90", "payment_method": "cartão de crédito 3x",
+  "status_label": "entregue", "total": "R$ 159,90", "payment_method": "cartão de crédito em 3x",
   "items": [{"name": "Shelby SU-21S Soprano Sunburst", "quantity": 1}],
   "tracking_code": "BRKR1122334BR", "estimated_delivery": "17/02/2026",
   "delivery_late": false, "notes": null,
@@ -197,8 +200,9 @@ Behaviour:
  "order_linked": true}
 ```
 
-Storage lives in `complaints.py` (`ComplaintStore`: `find_by_message_id`, `add`) on a
-JSONL file — the one place to change to send tickets to a real helpdesk instead.
+Storage lives in `complaints.py` (`ComplaintStore.register`, idempotent per phone +
+`message_id`, returning the stored record on a redelivery) on a JSONL file — the one
+place to change to send tickets to a real helpdesk instead.
 Prompt rules: confirm the summary with the customer before calling; only claim the
 complaint was registered after a protocol came back; give protocol and deadline.
 
@@ -214,7 +218,9 @@ reuse it:
   from the PDF and reviewed by hand, with our assumptions marked inline).
 - **Dynamic part** (appended after the static part): current date/time in
   America/Campo_Grande based on `REFERENCE_DATE`, whether the store is open now, the
-  customer's channel name if any.
+  categories with products in stock (computed from the data), and the customer's
+  profile name if any — sanitized to letters on one line and quoted, since the
+  customer chooses it.
 - Few-shot examples are not used; rules + tool descriptions are enough and keep the
   prompt short.
 
@@ -222,10 +228,12 @@ reuse it:
 
 OpenAI-compatible Chat Completions through the `openai` SDK (any provider, chosen by
 env), manual tool-use loop (`while finish_reason == "tool_calls"`), max 5 tool rounds per
-customer message, then a fallback apology. Invalid tool calls go back to the model as a
-`tool` message starting with `ERRO:` so it can recover. An API error, a
-`content_filter` finish or an empty reply gives the fixed pt-BR apology with the human
-contacts.
+customer message; a sixth request for tools runs nothing (a write the customer would not
+hear about) and falls back. Invalid tool calls go back to the model as a `tool` message
+starting with `ERRO:` so it can recover. Every other failure gives the fixed pt-BR
+apology with the human contacts and records why in `fallback_reason`: provider error,
+malformed response, filtered/refused, empty reply (not stored in the history), tool
+limit. Only a provider error says nothing about the model; the eval relies on that.
 The final text goes through `whatsapp_format.sanitize()` (converts `**x**` → `*x*`,
 drops `#` headings and Markdown links/tables) as a safety net; the prompt is the first
 line of defence.
