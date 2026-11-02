@@ -37,8 +37,12 @@ def test_search_products_returns_prices_from_code(toolbox):
     result = toolbox.run("search_products", {"query": "takamine gd20"}, _context())
     gd20 = result["products"][0]
     assert gd20["name"] == "Takamine GD20 Dreadnought Natural"
-    assert gd20["pix_price"] == 2089.05
-    assert gd20["card"] == {"price": 2199.0, "max_installments": 12, "installment_value": 183.25}
+    assert gd20["pix_price"] == "R$ 2.089,05"
+    assert gd20["card"] == {
+        "price": "R$ 2.199,00",
+        "max_installments": 12,
+        "installment_value": "R$ 183,25",
+    }
     assert gd20["promotion"] is None
 
 
@@ -70,7 +74,7 @@ def test_get_order_includes_after_sales_for_delivered(toolbox):
     result = toolbox.run("get_order", {"email": "leticia.rocha@jmail.com", "order_id": 7}, context)
     sales = result["orders"][0]["after_sales"]
     assert sales["regret_open"] is False
-    assert sales["legal_warranty_until"] == "2026-05-18"
+    assert sales["legal_warranty_until"] == "18/05/2026"
 
 
 def test_register_complaint_links_only_own_orders(toolbox):
@@ -78,7 +82,7 @@ def test_register_complaint_links_only_own_orders(toolbox):
     own = toolbox.run("register_complaint", args | {"order_id": 8}, _context(message_id="a"))
     assert own["order_linked"] is True
     assert own["protocol"] == "REC-20260325-0001"
-    assert own["response_deadline"] == "2026-03-26T14:30-04:00"
+    assert own["response_deadline"] == "26/03/2026 às 14:30"
 
     foreign = toolbox.run("register_complaint", args | {"order_id": 1}, _context(message_id="b"))
     assert foreign["order_linked"] is False

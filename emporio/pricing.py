@@ -86,6 +86,16 @@ def _tier_minimum(installments: int) -> Decimal:
     raise ValueError(f"installments above {MAX_INSTALLMENTS}: {installments}")
 
 
+def format_brl(value: Decimal | float) -> str:
+    """Brazilian currency format: 1234.5 -> "R$ 1.234,50".
+
+    Tools send money already formatted so the model copies it instead of converting
+    numbers itself (a live run turned 599.9 into "R$ 599,99").
+    """
+    integer, cents = f"{_round(_money(value)):,.2f}".split(".")
+    return f"R$ {integer.replace(',', '.')},{cents}"
+
+
 def _money(value: Decimal | float) -> Decimal:
     return value if isinstance(value, Decimal) else Decimal(str(value))
 

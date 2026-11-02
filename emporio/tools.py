@@ -7,12 +7,13 @@ schema, because not every provider enforces schemas (ADR-05, ADR-13).
 """
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any
 
 from emporio.catalog import Catalog, Offer
 from emporio.complaints import CATEGORIES, MAX_SUMMARY_LENGTH, ComplaintStore
 from emporio.orders import OrderService, OrderView, Window
+from emporio.pricing import format_brl
 
 
 class ToolError(Exception):
@@ -165,7 +166,7 @@ class Toolbox:
             raise ToolError(str(error)) from error
         return {
             "protocol": complaint.protocol,
-            "response_deadline": complaint.response_deadline,
+            "response_deadline": _datetime(complaint.response_deadline),
             "order_linked": order_linked,
         }
 
@@ -220,22 +221,22 @@ def _offer_json(offer: Offer) -> dict[str, Any]:
         "description": offer.product.description,
         "specs": offer.product.specs,
         "availability": offer.availability,
-        "table_price": price.table_price,
+        "table_price": format_brl(price.table_price),
         "promotion": (
             {
                 "name": promotion.name,
                 "discount_percent": promotion.discount_percent,
-                "price": promotion.price,
+                "price": format_brl(promotion.price),
             }
             if promotion
             else None
         ),
         "expired_promotions": list(offer.expired_promotions),
-        "pix_price": price.pix_price,
+        "pix_price": format_brl(price.pix_price) if price.pix_price is not None else None,
         "card": {
-            "price": price.card_price,
+            "price": format_brl(price.card_price),
             "max_installments": price.max_installments,
-            "installment_value": price.installment_value,
+            "installment_value": format_brl(price.installment_value),
         },
     }
 
@@ -244,23 +245,21 @@ def _order_json(view: OrderView) -> dict[str, Any]:
     order = view.order
     data: dict[str, Any] = {
         "order_id": order.id,
-        "date": order.order_date.isoformat(),
+        "date": _date(order.order_date),
         "status": order.status,
         "status_label": view.status_label,
-        "total": order.total,
+        "total": format_brl(order.total),
         "payment_method": view.payment_label,
         "items": [{"name": name, "quantity": qty} for name, qty in view.items],
         "tracking_code": order.tracking_code,
-        "estimated_delivery": (
-            order.estimated_delivery.isoformat() if order.estimated_delivery else None
-        ),
+        "estimated_delivery": _date(order.estimated_delivery) if order.estimated_delivery else None,
         "delivery_late": view.delivery_late,
         "notes": order.notes,
     }
     if view.after_sales:
         sales = view.after_sales
         data["after_sales"] = {
-            "received_on": sales.received_on.isoformat(),
+            "received_on": _date(sales.received_on),
             **_window_json("regret", sales.regret),
             **_window_json("preference_exchange", sales.preference_exchange),
             **_window_json("defect_exchange", sales.defect_exchange),
@@ -270,4 +269,15 @@ def _order_json(view: OrderView) -> dict[str, Any]:
 
 
 def _window_json(name: str, window: Window) -> dict[str, Any]:
-    return {f"{name}_until": window.until.isoformat(), f"{name}_open": window.open}
+    return {f"{name}_until": _date(window.until), f"{name}_open": window.open}
+
+
+def _date(value: date) -> str:
+    """Dates go to the model already as the customer reads them: 24/02/2026."""
+    return value.strftime("%d/%m/%Y")
+
+
+def _datetime(iso_value: str) -> str:
+    """ "2026-03-26T14:30-04:00" -> "26/03/2026 às 14:30"."""
+    moment = datetime.fromisoformat(iso_value)
+    return f"{_date(moment.date())} às {moment:%H:%M}"

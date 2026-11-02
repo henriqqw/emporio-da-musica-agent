@@ -87,8 +87,9 @@ validated in code (types, enums, limits), since providers differ in schema enfor
 write (R-CMP-*).
 Session data (phone, `message_id`) is injected by the handler, never taken from the
 model. Results are compact JSON.
-Money values are numbers in BRL rounded to 2 decimals (half-up); the prompt tells the
-model to write them as `R$ 1.234,56`.
+Money and dates are sent already formatted for the customer (`R$ 1.234,56`,
+`dd/mm/aaaa`): rounding is half-up in code and the model only copies them. A live run
+showed a small model turning 599.9 into "R$ 599,99" when it formatted numbers itself.
 
 ### 5.1 `search_products`
 
@@ -123,11 +124,11 @@ Output per product:
   "id": 95, "name": "Takamine GD20 Dreadnought Natural", "category": "Violões",
   "description": "...", "specs": {"top": "...", "electronics": "no"},
   "availability": "disponível",
-  "table_price": 2199.0,
-  "promotion": null,                       // or {"name": "...", "discount_percent": 18, "price": 1967.18}
+  "table_price": "R$ 2.199,00",
+  "promotion": null,                       // or {"name": "...", "discount_percent": 18, "price": "R$ 1.967,18"}
   "expired_promotions": ["Oferta Especial (12%)"],
-  "pix_price": 2089.05,                    // null when a promotion is active (R-PRICE-4)
-  "card": {"price": 2199.0, "max_installments": 12, "installment_value": 183.25}
+  "pix_price": "R$ 2.089,05",              // null when a promotion is active (R-PRICE-4)
+  "card": {"price": "R$ 2.199,00", "max_installments": 12, "installment_value": "R$ 183,25"}
 }
 ```
 
@@ -151,17 +152,17 @@ Output per order:
 
 ```json
 {
-  "order_id": 7, "date": "2026-02-03", "status": "delivered",
-  "status_label": "entregue", "total": 159.9, "payment_method": "cartão de crédito 3x",
+  "order_id": 7, "date": "03/02/2026", "status": "delivered",
+  "status_label": "entregue", "total": "R$ 159,90", "payment_method": "cartão de crédito 3x",
   "items": [{"name": "Shelby SU-21S Soprano Sunburst", "quantity": 1}],
-  "tracking_code": "BRKR1122334BR", "estimated_delivery": "2026-02-17",
+  "tracking_code": "BRKR1122334BR", "estimated_delivery": "17/02/2026",
   "delivery_late": false, "notes": null,
   "after_sales": {                          // only for delivered orders
-    "received_on": "2026-02-17",
-    "regret_until": "2026-02-24", "regret_open": false,
-    "preference_exchange_until": "2026-02-24", "preference_exchange_open": false,
-    "defect_exchange_until": "2026-03-05", "defect_exchange_open": false,
-    "legal_warranty_until": "2026-05-18", "legal_warranty_open": true
+    "received_on": "17/02/2026",
+    "regret_until": "24/02/2026", "regret_open": false,
+    "preference_exchange_until": "24/02/2026", "preference_exchange_open": false,
+    "defect_exchange_until": "05/03/2026", "defect_exchange_open": false,
+    "legal_warranty_until": "18/05/2026", "legal_warranty_open": true
   }
 }
 ```
@@ -187,7 +188,7 @@ Behaviour:
    `COMPLAINTS_PATH`, return:
 
 ```json
-{"protocol": "REC-20260325-0001", "response_deadline": "2026-03-26T14:30",
+{"protocol": "REC-20260325-0001", "response_deadline": "26/03/2026 às 14:30",
  "order_linked": true}
 ```
 

@@ -146,9 +146,11 @@ The manual warns that wrong prices or deadlines can be misleading advertising. S
 promotions, PIX, installment tiers, availability labels, return/warranty windows, late
 deliveries, complaint protocols and deadlines are **pure Python functions with unit tests**.
 Tool results carry pre-decided fields (e.g. `pix_price: null` when a promotion is active,
-`alternatives` when a product is unavailable, `regret_open: false`), and the prompt forbids
-stating any price, stock or order fact that did not come from a tool. This is also what makes
-a small, free model good enough.
+`alternatives` when a product is unavailable, `regret_open: false`), money and dates arrive
+already formatted (`R$ 599,90`, `24/02/2026`) so the model only copies them, and the prompt
+forbids stating any price, stock or order fact that did not come from a tool. This is also
+what makes a small, free model good enough — a live test caught it writing "R$ 599,99" for
+599.9 before money was pre-formatted.
 
 ### Security: identity comes from the channel, never from the model (ADR-05)
 

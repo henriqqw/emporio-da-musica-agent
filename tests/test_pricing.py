@@ -4,6 +4,7 @@ from emporio.data import Promotion
 from emporio.pricing import (
     allows_combined_payment,
     best_active_promotion,
+    format_brl,
     max_installments,
     quote,
 )
@@ -54,6 +55,20 @@ def test_highest_active_promotion_wins_and_inactive_ones_are_ignored():
 )
 def test_installment_tiers(price, expected):
     assert max_installments(price) == expected
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        (599.9, "R$ 599,90"),  # the live-run bug: must not become "R$ 599,99"
+        (2089.05, "R$ 2.089,05"),
+        (11499, "R$ 11.499,00"),
+        (0.5, "R$ 0,50"),
+        (1234567.891, "R$ 1.234.567,89"),
+    ],
+)
+def test_format_brl(value, expected):
+    assert format_brl(value) == expected
 
 
 def test_combined_payment_only_above_2000():

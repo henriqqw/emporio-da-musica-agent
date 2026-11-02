@@ -70,7 +70,7 @@ def test_tool_round_trip_appends_to_history(toolbox):
     assert assistant_call["function"]["name"] == "search_products"
     tool_message = history[2]
     assert tool_message["tool_call_id"] == "call_1"
-    assert json.loads(tool_message["content"])["products"][0]["pix_price"] == 2089.05
+    assert json.loads(tool_message["content"])["products"][0]["pix_price"] == "R$ 2.089,05"
 
     # the system prompt is never stored in the session history
     assert all(m["role"] != "system" for m in history)
