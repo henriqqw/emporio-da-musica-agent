@@ -2,7 +2,6 @@
 
 import json
 from datetime import datetime
-from types import SimpleNamespace
 
 import anthropic
 import httpx2
@@ -14,41 +13,11 @@ from emporio.complaints import ComplaintStore
 from emporio.config import STORE_TZ
 from emporio.orders import OrderService
 from emporio.tools import Toolbox, ToolContext
+from tests.fakes import FakeClient, refusal_response, text_response, tool_response
 
 CONTEXT = ToolContext(
     phone="67996547821", message_id="m1", now=datetime(2026, 3, 25, 14, 30, tzinfo=STORE_TZ)
 )
-USAGE = SimpleNamespace(input_tokens=10, cache_read_input_tokens=0, output_tokens=5)
-
-
-def text_response(text):
-    return SimpleNamespace(
-        stop_reason="end_turn",
-        stop_details=None,
-        content=[SimpleNamespace(type="text", text=text)],
-        usage=USAGE,
-    )
-
-
-def tool_response(name, arguments, tool_id="t1"):
-    block = SimpleNamespace(type="tool_use", id=tool_id, name=name, input=arguments)
-    return SimpleNamespace(stop_reason="tool_use", stop_details=None, content=[block], usage=USAGE)
-
-
-class FakeClient:
-    """Returns scripted responses (or raises scripted errors) and records requests."""
-
-    def __init__(self, *responses):
-        self._responses = list(responses)
-        self.requests = []
-        self.messages = self
-
-    def create(self, **request):
-        self.requests.append(request | {"messages": list(request["messages"])})
-        response = self._responses.pop(0)
-        if isinstance(response, Exception):
-            raise response
-        return response
 
 
 @pytest.fixture
@@ -116,10 +85,7 @@ def test_stops_after_max_tool_rounds(toolbox):
 
 
 def test_refusal_gives_fallback(toolbox):
-    refusal = SimpleNamespace(
-        stop_reason="refusal", stop_details={"category": None}, content=[], usage=USAGE
-    )
-    reply = _agent(FakeClient(refusal), toolbox).respond(_history(), CONTEXT, None)
+    reply = _agent(FakeClient(refusal_response()), toolbox).respond(_history(), CONTEXT, None)
     assert reply.fallback is True
 
 
