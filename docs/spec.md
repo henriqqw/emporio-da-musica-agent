@@ -117,6 +117,10 @@ category, ranked by shared type words in the name ("dreadnought", "7 cordas", "n
 brand, model code and color ignored) and then by closest price. Deterministic, so a
 small model does not need a second search to follow R-CAT-3.
 
+When nothing is found at all, the result carries `categories_in_stock` (categories with
+at least one sellable product), so the agent says what the store does sell from the data
+and not from the manual, which lists wind and orchestral instruments the data lacks (R-CAT-4).
+
 Output per product:
 
 ```json

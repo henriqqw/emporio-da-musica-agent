@@ -118,6 +118,15 @@ class Catalog:
             offers=offers[:SEARCH_LIMIT], total_found=len(offers), alternatives=alternatives
         )
 
+    def categories_in_stock(self) -> list[str]:
+        """Categories with at least one sellable product (R-CAT-4).
+
+        The manual lists wind and orchestral instruments, but the data has none; this is
+        what the agent may claim the store sells.
+        """
+        in_stock = {p.category_id for p in self._store.products.values() if self.offer(p).sellable}
+        return [c.name for c in self._store.categories.values() if c.id in in_stock]
+
     def alternatives(self, product: Product, limit: int = ALTERNATIVES_LIMIT) -> list[Offer]:
         """Sellable products of the same category, most similar first (R-CAT-3).
 

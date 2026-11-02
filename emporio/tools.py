@@ -134,6 +134,9 @@ class Toolbox:
         }
         if result.alternatives:
             data["alternatives"] = [_offer_json(offer) for offer in result.alternatives]
+        if not result.offers:
+            # Lets the agent say what the store does sell, from data rather than the manual.
+            data["categories_in_stock"] = self._catalog.categories_in_stock()
         return data
 
     def _get_order(self, args: dict[str, Any], context: ToolContext) -> dict[str, Any]:

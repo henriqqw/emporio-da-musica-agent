@@ -61,6 +61,15 @@ def test_combined_payment_is_decided_by_code(toolbox):
     assert ukulele["card"]["combined_payment_allowed"] is False
 
 
+def test_empty_search_lists_categories_in_stock(toolbox):
+    # A13: no saxophones; the agent must not claim other wind instruments
+    result = toolbox.run("search_products", {"query": "saxofone"}, _context())
+    assert result["total_found"] == 0
+    assert "Instrumentos de Sopro (Madeiras)" not in result["categories_in_stock"]
+    found = toolbox.run("search_products", {"query": "gd20"}, _context())
+    assert "categories_in_stock" not in found
+
+
 def test_search_products_needs_a_filter(toolbox):
     with pytest.raises(ToolError):
         toolbox.run("search_products", {}, _context())

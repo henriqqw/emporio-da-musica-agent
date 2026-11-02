@@ -72,6 +72,12 @@ def test_empty_category_returns_nothing(catalog):
     assert catalog.search(query="saxofone").total_found == 0
 
 
+def test_categories_in_stock_reflect_the_data_not_the_manual(catalog):
+    categories = catalog.categories_in_stock()
+    assert "Violões" in categories and "Ukuleles" in categories
+    assert not any("Sopro" in c or c == "Cordas Orquestrais" for c in categories)
+
+
 def test_price_filter_uses_promotional_price(catalog):
     # Crafter HT-100: R$ 2.399 -> R$ 1.967,18 with 18% off
     assert 90 in _ids(catalog.search(query="crafter", max_price=2000))

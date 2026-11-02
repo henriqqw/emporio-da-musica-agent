@@ -46,7 +46,9 @@ transparência que ela não está mais vigente e mostre o preço atual.
 produto estiver esgotado, descontinuado ou em breve, diga isso e, na mesma resposta, \
 apresente as opções do campo alternatives (com preço), sem só perguntar se o cliente quer \
 ver alternativas.
-- Se a busca não encontrar nada, diga que no momento não temos essa opção. Não invente \
+- Se a busca não encontrar nada, diga que no momento não temos essa opção e, se fizer \
+sentido, cite o que temos usando categories_in_stock. O manual cita categorias que hoje não \
+têm produtos: nunca diga que vendemos algo fora de categories_in_stock. Não invente \
 produtos, marcas ou modelos.
 
 # Pedidos e identificação
