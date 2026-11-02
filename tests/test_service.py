@@ -47,7 +47,8 @@ def test_tools_receive_phone_and_message_id_from_the_channel(tmp_path):
         text_response("Registrei sua reclamação."),
     )
     service = build_chat_service(_settings(tmp_path), client)
-    service.handle(_message("pode registrar", message_id="wamid.123"))
+    reply = service.handle(_message("pode registrar", message_id="wamid.123"))
+    assert reply.tools_used == ("register_complaint",)
 
     record = (tmp_path / "complaints.jsonl").read_text(encoding="utf-8")
     assert '"phone": "67996547821"' in record
