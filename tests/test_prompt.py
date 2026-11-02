@@ -1,0 +1,35 @@
+from datetime import datetime
+
+from emporio.config import STORE_TZ
+from emporio.prompt import dynamic_context, static_instructions, system_blocks
+
+WEDNESDAY_AFTERNOON = datetime(2026, 3, 25, 14, 30, tzinfo=STORE_TZ)
+SATURDAY_EVENING = datetime(2026, 3, 28, 20, 0, tzinfo=STORE_TZ)
+
+
+def test_static_block_is_cached_and_identical_across_requests():
+    first = system_blocks(WEDNESDAY_AFTERNOON, "Ana")
+    second = system_blocks(SATURDAY_EVENING)
+    assert first[0] == second[0]
+    assert first[0]["cache_control"] == {"type": "ephemeral"}
+    assert "cache_control" not in first[1]
+
+
+def test_static_block_contains_the_whole_manual():
+    text = static_instructions()
+    assert "Rua 14 de Maio, 3200" in text
+    assert "## 10. Disposições finais" in text
+
+
+def test_dynamic_context_when_open():
+    text = dynamic_context(WEDNESDAY_AFTERNOON, "Ana")
+    assert "quarta-feira, 25/03/2026 14:30" in text
+    assert "aberta" in text
+    assert "Ana" in text
+
+
+def test_dynamic_context_when_closed_says_when_team_is_back():
+    text = dynamic_context(SATURDAY_EVENING)
+    assert "fechada" in text
+    assert "segunda-feira, 30/03 às 09:00" in text
+    assert "Nome do cliente" not in text
