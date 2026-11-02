@@ -81,8 +81,10 @@ id) → `ChatService.handle` → send `OutgoingMessage.text` via the provider AP
 
 ## 5. Tools
 
-Three tools, defined with JSON Schema and `strict: true`. `search_products` and
-`get_order` are read-only; `register_complaint` is the single write (R-CMP-*).
+Three tools, described with JSON Schema in the OpenAI function format; every argument is
+validated in code (types, enums, limits), since providers differ in schema enforcement.
+`search_products` and `get_order` are read-only; `register_complaint` is the single
+write (R-CMP-*).
 Session data (phone, `message_id`) is injected by the handler, never taken from the
 model. Results are compact JSON.
 Money values are numbers in BRL rounded to 2 decimals (half-up); the prompt tells the
@@ -190,12 +192,15 @@ complaint was registered after a protocol came back; give protocol and deadline.
 
 ## 6. Prompt strategy
 
-- **Static system block** (cached with `cache_control`): persona and tone (R-TONE-*),
+One system message, static part first so providers with automatic prefix caching can
+reuse it:
+
+- **Static part**: persona and tone (R-TONE-*),
   WhatsApp format rules, behaviour rules (always use tools for data, never invent,
   identification flow, out-of-scope handling, accessories redirect, one question per
   message), and the full manual as Markdown (`knowledge/policies.md`, transcribed once
   from the PDF and reviewed by hand, with our assumptions marked inline).
-- **Dynamic system block** (after the cache breakpoint): current date/time in
+- **Dynamic part** (appended after the static part): current date/time in
   America/Campo_Grande based on `REFERENCE_DATE`, whether the store is open now, the
   customer's channel name if any.
 - Few-shot examples are not used; rules + tool descriptions are enough and keep the
@@ -203,12 +208,12 @@ complaint was registered after a protocol came back; give protocol and deadline.
 
 ## 7. Agent loop
 
-Anthropic Python SDK, manual tool-use loop (`while stop_reason == "tool_use"`), max 5
-tool rounds per customer message, then a fallback apology. Tool exceptions are returned
-as `tool_result` with `is_error: true`. Model and effort come from env
-(`ANTHROPIC_MODEL`, default `claude-haiku-5-5`; `ANTHROPIC_EFFORT`, default `low`).
-A `refusal` stop reason (Haiku 5.5 has no server-side fallback) or an API error gives
-the fixed pt-BR apology with the human contacts.
+OpenAI-compatible Chat Completions through the `openai` SDK (any provider, chosen by
+env), manual tool-use loop (`while finish_reason == "tool_calls"`), max 5 tool rounds per
+customer message, then a fallback apology. Invalid tool calls go back to the model as a
+`tool` message starting with `ERRO:` so it can recover. An API error, a
+`content_filter` finish or an empty reply gives the fixed pt-BR apology with the human
+contacts.
 The final text goes through `whatsapp_format.sanitize()` (converts `**x**` → `*x*`,
 drops `#` headings and Markdown links/tables) as a safety net; the prompt is the first
 line of defence.
@@ -217,9 +222,10 @@ line of defence.
 
 | Var | Default | Purpose |
 |---|---|---|
-| `ANTHROPIC_API_KEY` | — (required) | provider credentials |
-| `ANTHROPIC_MODEL` | `claude-haiku-5-5` | model id |
-| `ANTHROPIC_EFFORT` | `low` | reasoning effort |
+| `LLM_BASE_URL` | Gemini's OpenAI-compatible endpoint | provider (any OpenAI-compatible API) |
+| `LLM_API_KEY` | — (required) | provider credentials |
+| `LLM_MODEL` | a Gemini Flash model (free tier) | model id |
+| `LLM_REASONING_EFFORT` | unset | optional; sent only when set |
 | `REFERENCE_DATE` | real date | "today" for date logic (R-DATE-1) |
 | `SESSION_TTL_MINUTES` | `30` | session inactivity timeout |
 | `DATA_DIR` | `./data` | CSV location |
@@ -267,9 +273,10 @@ persistence of sessions, authentication of the demo UI, WhatsApp integration
 - **Q1 (decided)** Contacts: phone (67) 3341-4444, WhatsApp (67) 3321-4500 (R-INFO-2).
 - **Q2 (decided)** Complaints are registered by a third tool, `register_complaint`,
   the single write operation (section 5.3, R-CMP-*).
-- **Q3 (decided)** Model: `claude-haiku-5-5` at low effort. The market pattern for
-  support chat is a small, cheap default model; here the hard parts (prices, dates,
-  identification, protocol) are deterministic code, so the model mostly writes the
-  reply. It is ~15–40x cheaper per message than Opus 5.5. It must pass the acceptance
-  scenarios (section 10) before the examples are recorded; if not, fix the prompt
-  first, then fall back to `claude-sonnet-5-5` via `ANTHROPIC_MODEL` (no code change).
+- **Q3 (decided, revised)** Model and provider are configuration (architecture ADR-03
+  and ADR-13). Any OpenAI-compatible API works; the default is a free-tier Gemini Flash
+  model so evaluators run at zero cost. The hard parts (prices, dates, identification,
+  protocol) are deterministic code, so a small model is enough; the recorded examples
+  state which model produced them. For production a small paid model (e.g. Claude
+  Haiku 5.5) is recommended. Earlier revision: Claude Haiku 5.5 on Anthropic's native
+  SDK, replaced so the project is not tied to one paid provider.

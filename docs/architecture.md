@@ -13,7 +13,7 @@ document records the technical decisions behind it, one short ADR per decision
  ChatService ─────────────── SessionStore (in memory, TTL)
         │
         ▼
- Agent  (tool-use loop, Anthropic SDK) ── Prompt (persona + rules + policy manual)
+ Agent  (tool-use loop, OpenAI-compatible API) ── Prompt (persona + rules + policy manual)
         │  tool calls
         ▼
  Tools  (schemas + dispatch; injects phone / message_id from the session)
@@ -34,8 +34,8 @@ a new data source is one change at the bottom.
 | Layer | Choice | Version |
 |---|---|---|
 | Language | Python | 3.12 |
-| LLM provider | Anthropic API, official `anthropic` SDK | 2.3.0 |
-| Model | Claude Haiku 5.5 (`claude-haiku-5-5`), effort `low` | — |
+| LLM access | any OpenAI-compatible Chat Completions API, official `openai` SDK | pinned |
+| Model | configuration; default: Gemini Flash on Google's free tier (ADR-03) | — |
 | HTTP | FastAPI + uvicorn | 0.162 / 0.54 |
 | Demo UI | one static HTML file, plain JavaScript | — |
 | Config | environment variables, `python-dotenv` for local `.env` | 1.2 |
@@ -63,7 +63,7 @@ agent needs two kinds of knowledge: *live data* (prices, stock, promotions, orde
 | RAG (vector search) | No | The manual is ~8 pages (~3–4k tokens) and fits whole in the prompt, cached. Retrieval would return fragments and could drop a rule that depends on another (e.g. promotions are not cumulative with PIX). More moving parts, more risk, no gain. |
 | SQL agent | No | Letting the model write queries over customer data could expose another customer's order; with fixed tools the phone + e-mail check runs in code and cannot be bypassed. There are no analytical questions to answer, only point lookups. |
 
-**Consequences.** Small, auditable surface: three tools with strict schemas. Policy
+**Consequences.** Small, auditable surface: three tools, arguments validated in code. Policy
 answers depend on the prompt being followed (covered by the acceptance scenarios).
 Revisit RAG if the manual grows to hundreds of pages, a large FAQ base appears, or the
 catalog needs semantic search over thousands of products; revisit SQL only for an
@@ -73,27 +73,32 @@ internal analytics assistant, never customer-facing.
 
 **Context.** Three tools, one model, one conversation flow.
 
-**Decision.** Use the provider SDK directly with a manual tool-use loop (~60 lines),
-not the SDK's beta tool runner either.
+**Decision.** Call the chat API directly through the official `openai` SDK with a manual
+tool-use loop (~60 lines). See ADR-13 for why that SDK.
 
 **Consequences.** Every request and tool call is visible in our code, easy to test with
 a fake client and to read in a review. We own the loop (limits, error handling,
-session-data injection), which is exactly what the case evaluates. No beta dependency.
+session-data injection), which is exactly what the case evaluates.
 
-### ADR-03 Model: Claude Haiku 5.5 at low effort
+### ADR-03 Model: configuration, free-tier default, small model recommended
 
-**Context.** Support chat is high-volume and latency-sensitive; the common industry
-pattern is a small, cheap default model.
+**Context.** The case leaves the model open ("pagos ou grátis, locais ou via API").
+Support chat is high-volume and latency-sensitive; the common industry pattern is a
+small, cheap default model. Evaluators must be able to run the project without paying.
 
-**Decision.** `claude-haiku-5-5`, effort `low`, chosen by env (`ANTHROPIC_MODEL`).
-Deterministic code does the parts where a small model would err (arithmetic, dates,
-identification, protocol numbers), and tool results carry pre-decided fields (e.g.
-`pix_price: null` when a promotion is active) so the model mostly writes the reply.
+**Decision.** The model is three env vars (`LLM_BASE_URL`, `LLM_MODEL`, `LLM_API_KEY`).
+The default in `.env.example` is a Gemini Flash model on Google's free tier (no card),
+with ready-made blocks for OpenAI, Claude (Anthropic's OpenAI-compatible endpoint or
+OpenRouter), Groq and a local Ollama. Deterministic code does the parts where a small
+model would err (arithmetic, dates, identification, protocol numbers), and tool results
+carry pre-decided fields (e.g. `pix_price: null` when a promotion is active) so the model
+mostly writes the reply.
 
-**Consequences.** ~15–40x cheaper per message than Opus 5.5. It must pass the
-acceptance scenarios; otherwise the prompt is fixed first and `claude-sonnet-5-5` is the
-env-only fallback. Haiku 5.5 has no server-side refusal fallback, so a refusal returns a
-fixed apology with the human contacts.
+**Consequences.** Anyone can run the agent at zero cost. Behaviour still depends on the
+model: the README lists the models the acceptance scenarios were actually run on instead
+of promising "works with everything". For production, a small paid model with stable
+quotas (e.g. Claude Haiku 5.5, GPT mini class) is the recommendation; Google's free tier
+may use prompts for product improvement, acceptable for fictional demo data only.
 
 ### ADR-04 Deterministic domain, LLM only for language
 
@@ -116,7 +121,8 @@ that did not come from a tool result.
 **Decision.** The tool handler injects the session phone and `message_id`; they are not
 tool parameters. `get_order` requires the e-mail of the customer owning that phone and
 returns the same "not found" whether the e-mail or the order is wrong. Tools validate
-their own inputs (`strict: true` schemas plus checks in code).
+every argument in code (types, enums, limits); provider-side schema enforcement is not
+relied on, because not every OpenAI-compatible provider applies it.
 
 **Consequences.** A prompt injection can at most make the agent ask for an e-mail; it
 cannot reach another customer's data. In the demo the phone is typed in the UI, standing
@@ -170,22 +176,23 @@ helpdesk API (Zendesk, Freshdesk, the WhatsApp provider's inbox) changes one cla
 
 **Context.** The system prompt (persona, rules, manual) is the same for every request.
 
-**Decision.** Two system blocks: the static one with `cache_control` (cached), and a small
-dynamic one after it (current date/time, whether the store is open). The tool list is
-fixed and ordered, so the cache prefix never changes.
+**Decision.** One system message: the static part first (persona, rules, manual), then a
+small dynamic part (current date/time, whether the store is open). The tool list is fixed
+and ordered. No timestamps or IDs inside the static part.
 
-**Consequences.** Repeated requests read the large prefix from cache (~10% of the input
-price). No timestamps or IDs inside the cached block.
+**Consequences.** Providers with automatic prefix caching (OpenAI, Gemini) reuse the
+static prefix across requests. Explicit cache control (Anthropic's `cache_control`) is
+not available through the OpenAI-compatible API; that cost is accepted (ADR-13).
 
 ### ADR-11 Synchronous code
 
 **Context.** One request at a time per customer; the demo has a handful of users.
 
-**Decision.** Plain synchronous functions and the sync Anthropic client. FastAPI runs sync
+**Decision.** Plain synchronous functions and the sync `OpenAI` client. FastAPI runs sync
 endpoints in a thread pool.
 
 **Consequences.** Simpler to read and test. Under real load (many concurrent WhatsApp
-webhooks) the agent would move to `AsyncAnthropic` and async endpoints; the module
+webhooks) the agent would move to `AsyncOpenAI` and async endpoints; the module
 boundaries stay the same.
 
 ### ADR-12 Quality gates
@@ -202,23 +209,51 @@ boundaries stay the same.
   content and personal data are not (LGPD).
 - **Git:** small commits, one concern each, Conventional Commits messages, no force-push.
 
+### ADR-13 LLM access: one OpenAI-compatible client
+
+**Context.** The first version used Anthropic's SDK, which runs only models that speak
+Anthropic's API. Evaluators may have no Anthropic account, and testing should cost nothing.
+
+**Decision.** Talk to the model through the OpenAI Chat Completions format with the
+official `openai` SDK; the provider is chosen by `LLM_BASE_URL` + `LLM_MODEL` +
+`LLM_API_KEY`. That format is the de facto standard: OpenAI, Google Gemini, Groq,
+OpenRouter, a local Ollama and Anthropic itself expose it.
+
+| Option | Verdict |
+|---|---|
+| Native Anthropic SDK only (previous version) | Rejected: one provider, paid key required. |
+| Own `LLMClient` interface + one adapter per provider | Rejected for now: more code and two paths to test, with no provider requirement that needs it. |
+| LiteLLM | Rejected: large dependency that hides the request/response translation we want visible. |
+| **OpenAI-compatible API, one client** | **Chosen:** swaps the SDK rather than adding a layer; same loop size. |
+
+**Consequences.** Provider-specific extras are lost where the compatibility layers drop
+them: explicit prompt caching, `strict` tool schemas and `reasoning_effort` on Claude,
+Anthropic's structured refusal details (a refusal arrives as `finish_reason:
+content_filter` and gets the same fallback). Tools therefore validate every argument
+in code (ADR-05). Optional `LLM_REASONING_EFFORT` is sent only when set, since not every
+provider accepts it. If a provider ever needs native features, an adapter can be added
+behind the agent's single call site without touching tools or domain.
+
 ## 4. Module map
 
 ```
 emporio/
   config.py           settings from env, store time zone, reference date
   data.py             CSV loading into frozen dataclasses
+  phone.py            phone normalization (session identity, identification)
+  store_hours.py      opening hours, next opening
   pricing.py          promo, PIX, installments (pure)
   catalog.py          product search + availability
   orders.py           identification, status labels, after-sales windows
   complaints.py       ComplaintStore (JSONL), protocol, deadline
   tools.py            tool schemas + dispatch
   prompt.py           system prompt builder
-  agent.py            tool-use loop over an injected Anthropic client
+  agent.py            tool-use loop over an injected OpenAI-compatible client
   sessions.py         in-memory SessionStore with TTL
   whatsapp_format.py  reply sanitizer
   service.py          ChatService, IncomingMessage, OutgoingMessage
   api.py              FastAPI app (demo channel)
+  __main__.py         python -m emporio
 knowledge/policies.md policy manual transcribed from the PDF
 static/index.html     demo chat
 scripts/run_scenarios.py
