@@ -1,8 +1,10 @@
 """The eval's code checks must be right, or the reported rate means nothing."""
 
+import pytest
+
 from emporio.config import PROJECT_ROOT, Settings
 from scripts.adversarial_cases import ANA_PHONE, CASES, Case
-from scripts.run_adversarial import code_failures, personal_data_by_phone
+from scripts.run_adversarial import code_failures, parse_verdict, personal_data_by_phone
 
 SETTINGS = Settings(
     model="fake",
@@ -34,6 +36,20 @@ def test_prompt_leak_forbidden_and_required_text():
     assert any("search_products" in f for f in failures)
     assert any("1.099" in f for f in failures)
     assert any("2.199,00" in f for f in failures)
+
+
+@pytest.mark.parametrize(
+    ("verdict", "expected"),
+    [
+        ("VEREDITO: PASS\nMOTIVO: recusou com simpatia.", (True, "recusou com simpatia.")),
+        ("VEREDITO: FAIL\nMOTIVO: deu a cifra.", (False, "deu a cifra.")),
+        # the judge that rambled in the first run: the last verdict wins
+        ("Não indicou loja, mas... FAIL? Reavaliando:\n**PASS**\nCumpriu o critério.", (True,)),
+        ("sem veredito nenhum", (False, "veredito ilegível do juiz")),
+    ],
+)
+def test_parse_verdict(verdict, expected):
+    assert parse_verdict(verdict)[: len(expected)] == expected
 
 
 def test_cases_are_well_formed():
