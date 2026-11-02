@@ -26,7 +26,6 @@ def test_no_promotion_gives_pix_discount_and_installments():
 def test_active_promotion_replaces_pix_discount():
     # A4: Crafter HT-100, 18% "Desconto Exclusivo" is active
     q = quote(2399.0, [_promo(18, active=True, name="Desconto Exclusivo")])
-    assert q.promotion.price == 1967.18
     assert q.promotion.name == "Desconto Exclusivo"
     assert q.pix_price is None
     assert q.card_price == 1967.18

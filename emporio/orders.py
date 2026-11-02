@@ -62,6 +62,9 @@ class OrderService:
         self._customers = {
             (normalize_phone(c.phone), c.email.strip().lower()): c for c in store.customers
         }
+        self._customer_ids_by_phone: dict[str, set[int]] = {}
+        for c in store.customers:
+            self._customer_ids_by_phone.setdefault(normalize_phone(c.phone), set()).add(c.id)
 
     def lookup(
         self, phone: str, email: str, today: date, order_id: int | None = None
@@ -93,11 +96,7 @@ class OrderService:
         order = self._store.orders.get(order_id)
         if order is None:
             return False
-        normalized = normalize_phone(phone)
-        return any(
-            c.id == order.customer_id and normalize_phone(c.phone) == normalized
-            for c in self._store.customers
-        )
+        return order.customer_id in self._customer_ids_by_phone.get(normalize_phone(phone), set())
 
     def _view(self, order: Order, today: date) -> OrderView:
         products = self._store.products

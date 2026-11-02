@@ -2,8 +2,8 @@
 
 Thin layer: validates input, injects session data (phone, message_id, time) that
 the model must never control, calls the domain and turns the result into compact
-JSON-ready dicts. Every argument is validated here against the tool's own JSON
-schema, because not every provider enforces schemas (ADR-05, ADR-13).
+JSON-ready dicts. Every argument is validated against the tool's own JSON schema
+(validation.py), because not every provider enforces schemas (ADR-05, ADR-13).
 """
 
 from dataclasses import dataclass
@@ -14,10 +14,7 @@ from emporio.catalog import Catalog, Offer
 from emporio.complaints import CATEGORIES, MAX_SUMMARY_LENGTH, ComplaintStore
 from emporio.orders import OrderService, OrderView, Window
 from emporio.pricing import allows_combined_payment, format_brl
-
-
-class ToolError(Exception):
-    """Invalid call; the message goes back to the model as an error tool result."""
+from emporio.validation import ToolError, validate_arguments
 
 
 @dataclass(frozen=True)
@@ -105,19 +102,19 @@ class Toolbox:
         self.definitions = tool_definitions(catalog.category_names)
         functions = (d["function"] for d in self.definitions)
         self._schemas = {f["name"]: f["parameters"] for f in functions}
+        self._handlers = {
+            "search_products": self._search_products,
+            "get_order": self._get_order,
+            "register_complaint": self._register_complaint,
+        }
 
     def categories_in_stock(self) -> list[str]:
         return self._catalog.categories_in_stock()
 
     def run(self, name: str, arguments: Any, context: ToolContext) -> dict[str, Any]:
-        handlers = {
-            "search_products": self._search_products,
-            "get_order": self._get_order,
-            "register_complaint": self._register_complaint,
-        }
-        if name not in handlers:
+        if name not in self._handlers:
             raise ToolError(f"Ferramenta desconhecida: {name}")
-        return handlers[name](validate_arguments(self._schemas[name], arguments), context)
+        return self._handlers[name](validate_arguments(self._schemas[name], arguments), context)
 
     def _search_products(self, args: dict[str, Any], _: ToolContext) -> dict[str, Any]:
         filters = ("query", "category", "min_price", "max_price")
@@ -150,8 +147,8 @@ class Toolbox:
             today=context.now.date(),
             order_id=args.get("order_id"),
         )
-        if lookup.error:
-            return {"error": lookup.error}
+        if lookup.error or lookup.customer is None:
+            return {"error": lookup.error or "not_identified"}
         return {
             "customer_first_name": lookup.customer.name.split()[0],
             "orders": [_order_json(view) for view in lookup.orders],
@@ -179,46 +176,6 @@ class Toolbox:
         }
 
 
-_JSON_TYPES: dict[str, tuple[type, ...]] = {
-    "string": (str,),
-    "number": (int, float),
-    "integer": (int,),
-    "boolean": (bool,),
-}
-
-
-def validate_arguments(schema: dict[str, Any], arguments: Any) -> dict[str, Any]:
-    """Check arguments against the subset of JSON Schema the tools use.
-
-    Optional parameters sent as null are dropped. Messages are in Portuguese and
-    specific, so the model can fix the call on its next attempt.
-    """
-    if not isinstance(arguments, dict):
-        raise ToolError("Os argumentos devem ser um objeto JSON.")
-    properties = schema["properties"]
-    unknown = sorted(set(arguments) - set(properties))
-    if unknown:
-        raise ToolError(f"Parâmetros desconhecidos: {', '.join(unknown)}.")
-    missing = [name for name in schema.get("required", []) if arguments.get(name) in (None, "")]
-    if missing:
-        raise ToolError(f"Parâmetros obrigatórios ausentes: {', '.join(missing)}.")
-
-    valid = {}
-    for name, value in arguments.items():
-        if value is None:
-            continue
-        spec = properties[name]
-        expected = spec["type"]
-        # bool is a subclass of int in Python: never accept it as a number, and vice versa
-        wrong_bool = isinstance(value, bool) != (expected == "boolean")
-        if wrong_bool or not isinstance(value, _JSON_TYPES[expected]):
-            raise ToolError(f"O parâmetro {name} deve ser do tipo {expected}.")
-        if "enum" in spec and value not in spec["enum"]:
-            raise ToolError(f"O parâmetro {name} deve ser um de: {', '.join(spec['enum'])}.")
-        valid[name] = value
-    return valid
-
-
 def _offer_json(offer: Offer) -> dict[str, Any]:
     price = offer.price
     promotion = price.promotion
@@ -234,7 +191,7 @@ def _offer_json(offer: Offer) -> dict[str, Any]:
             {
                 "name": promotion.name,
                 "discount": f"{promotion.discount_percent:g}%",  # "18%", not "18.0"
-                "price": format_brl(promotion.price),
+                "price": format_brl(price.card_price),
             }
             if promotion
             else None

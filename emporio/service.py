@@ -5,6 +5,7 @@ into an IncomingMessage and sends back OutgoingMessage.text. Nothing here knows
 about HTTP.
 """
 
+import logging
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -21,6 +22,8 @@ from emporio.phone import normalize_phone
 from emporio.sessions import SessionStore
 from emporio.tools import Toolbox, ToolContext
 from emporio.whatsapp_format import sanitize
+
+logger = logging.getLogger(__name__)
 
 LLM_TIMEOUT_SECONDS = 30
 LLM_MAX_RETRIES = 1
@@ -51,6 +54,7 @@ class ChatService:
     def handle(self, message: IncomingMessage) -> OutgoingMessage:
         phone = normalize_phone(message.phone)
         now = self._clock()
+        logger.info("message channel=%s", message.channel)  # no content or phone (LGPD)
         session = self._sessions.get(phone, now)
         with session.lock:  # one message at a time per customer
             session.messages.append({"role": "user", "content": message.text})

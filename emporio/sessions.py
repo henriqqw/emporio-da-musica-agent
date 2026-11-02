@@ -12,7 +12,6 @@ from typing import Any
 
 @dataclass
 class Session:
-    phone: str
     last_activity: datetime
     messages: list[dict[str, Any]] = field(default_factory=list)
     lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
@@ -29,7 +28,7 @@ class SessionStore:
         with self._lock:
             session = self._sessions.get(phone)
             if session is None or now - session.last_activity > self._ttl:
-                session = Session(phone=phone, last_activity=now)
+                session = Session(last_activity=now)
                 self._sessions[phone] = session
             session.last_activity = now
             return session

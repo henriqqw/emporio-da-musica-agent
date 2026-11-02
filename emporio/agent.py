@@ -9,7 +9,7 @@ import json
 import logging
 import time
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, cast
 
 import openai
 
@@ -54,7 +54,9 @@ class Agent:
         self._toolbox = toolbox
         self._model = model
         # Sent only when configured: not every provider accepts the parameter.
-        self._extra = {"reasoning_effort": reasoning_effort} if reasoning_effort else {}
+        self._extra: dict[str, Any] = (
+            {"reasoning_effort": reasoning_effort} if reasoning_effort else {}
+        )
 
     def respond(
         self, history: list[dict[str, Any]], context: ToolContext, customer_name: str | None
@@ -72,8 +74,10 @@ class Agent:
             try:
                 response = self._client.chat.completions.create(
                     model=self._model,
-                    messages=[system, *history],
-                    tools=self._toolbox.definitions,
+                    # Plain dicts in the API's wire format, as stored in the session; the
+                    # SDK's TypedDicts would have to be threaded through the whole history.
+                    messages=cast(Any, [system, *history]),
+                    tools=cast(Any, self._toolbox.definitions),
                     **self._extra,
                 )
                 choice = response.choices[0]

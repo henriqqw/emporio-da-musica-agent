@@ -21,7 +21,6 @@ COMBINED_PAYMENT_MIN = Decimal("2000")  # R-PAY-3: strictly above
 class AppliedPromotion:
     name: str
     discount_percent: float
-    price: float
 
 
 @dataclass(frozen=True)
@@ -45,7 +44,7 @@ def quote(table_price: float, promotions: Iterable[Promotion]) -> PriceQuote:
         pix: Decimal | None = _round(table * (1 - PIX_DISCOUNT))
     else:
         card = _round(table * (1 - Decimal(str(promo.discount_percent)) / 100))
-        applied = AppliedPromotion(promo.name, promo.discount_percent, float(card))
+        applied = AppliedPromotion(promo.name, promo.discount_percent)
         pix = None
 
     installments = max_installments(card)

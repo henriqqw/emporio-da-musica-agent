@@ -9,7 +9,6 @@ import re
 from collections.abc import Sequence
 from datetime import datetime
 from functools import cache
-from pathlib import Path
 
 from emporio.config import PROJECT_ROOT
 from emporio.store_hours import is_open, next_opening
@@ -114,8 +113,8 @@ pode ajudar e passe os contatos. Se a loja estiver fechada, diga quando a equipe
 
 
 @cache
-def static_instructions(policies_path: Path = POLICIES_PATH) -> str:
-    return _INSTRUCTIONS + policies_path.read_text(encoding="utf-8")
+def static_instructions() -> str:
+    return _INSTRUCTIONS + POLICIES_PATH.read_text(encoding="utf-8")
 
 
 def system_prompt(

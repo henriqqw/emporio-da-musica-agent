@@ -3,6 +3,7 @@
 import re
 import unicodedata
 from dataclasses import dataclass
+from typing import NamedTuple
 
 from emporio.data import Product, Promotion, StoreData
 from emporio.pricing import PriceQuote, quote
@@ -27,6 +28,12 @@ class Offer:
     @property
     def sellable(self) -> bool:
         return self.availability in ("disponível", "últimas unidades")
+
+
+class _Match(NamedTuple):
+    score: int  # how many query tokens matched
+    full: bool  # every token matched
+    offer: Offer
 
 
 @dataclass(frozen=True)
@@ -95,7 +102,7 @@ class Catalog:
             return SearchResult(offers=(), total_found=0)  # e.g. "quero": nothing to search
         candidates = self._in_category(category)
 
-        scored: list[tuple[int, bool, Offer]] = []
+        matches: list[_Match] = []
         for product in candidates:
             score = self._score(product, tokens)
             if tokens and score == 0:
@@ -106,15 +113,15 @@ class Catalog:
                 continue
             if not (offer.sellable or include_unavailable or (tokens and full_match)):
                 continue
-            scored.append((score, full_match, offer))
+            matches.append(_Match(score, full_match, offer))
 
         # Prefer products that match every token; fall back to partial matches.
-        if any(full for _, full, _ in scored):
-            scored = [entry for entry in scored if entry[1]]
+        if any(m.full for m in matches):
+            matches = [m for m in matches if m.full]
 
-        scored.sort(key=lambda e: (-e[0], not e[2].sellable, e[2].price.card_price))
-        offers = tuple(offer for _, _, offer in scored)
-        alternatives = ()
+        matches.sort(key=lambda m: (-m.score, not m.offer.sellable, m.offer.price.card_price))
+        offers = tuple(m.offer for m in matches)
+        alternatives: tuple[Offer, ...] = ()
         if offers and not any(offer.sellable for offer in offers):
             alternatives = tuple(self.alternatives(offers[0].product))
         return SearchResult(
