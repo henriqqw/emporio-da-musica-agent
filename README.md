@@ -122,7 +122,8 @@ against the acceptance table in [spec §10](docs/spec.md#10-acceptance-scenarios
   evicted → Redis with TTL for both, async endpoints.
 - Complaints go to a local JSONL file and nobody is notified → helpdesk integration
   (`ComplaintStore` is the only class to change) and bot pause on handoff.
-- Small wording slips remain (e.g. calling the order date the dispatch date); every
+- Small wording slips remain (a playful refusal, one clumsy sentence, declining the
+  ukulele's origin as off-scope); every
   number and date comes from code.
 
 ## How AI assistants were used
