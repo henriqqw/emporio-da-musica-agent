@@ -35,3 +35,8 @@ Beyond the plan, the live runs and the audit added fix commits, each traced to w
 exposed it: free-tier quota and latency, product alternatives, prompt rules for returns
 and complaints, pre-formatted money and dates, combined payment in code (A14) and
 categories in stock (A13). The audit's traceability table is in spec section 10.
+
+After the audit, a manual test ("escreva um código de música") led to spec section 10b
+(A17): an adversarial eval with code checks and an LLM judge, a calibrated baseline
+(17/20), the scope prompt and two rounds of human-review fixes (20/20), then a shorter
+README with a 15-minute evaluation path.

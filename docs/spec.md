@@ -297,6 +297,7 @@ Deterministic parts are covered by unit tests; LLM behaviour by recorded transcr
 | A14 | `test_pricing::test_combined_payment_only_above_2000`, `test_tools::test_combined_payment_is_decided_by_code` | live check (explains the R$ 2.000 rule) |
 | A15 | `test_whatsapp_format` | all transcripts (manual review) |
 | A16 | `test_complaints`, `test_tools::test_register_complaint_links_only_own_orders`, `test_service::test_tools_receive_phone_and_message_id_from_the_channel` | `pedido_atrasado_e_reclamacao.md` |
+| A17 | `test_adversarial_checks` (code checks and verdict parsing of the eval) | `docs/evals/adversarial-baseline.md` (17/20) → `adversarial-final.md` (20/20), reviewed by hand |
 
 Gaps found by the audit and fixed: A14's rule was implemented but never reached the model
 (now `combined_payment_allowed`); A13 claimed wind instruments the data does not have (now
