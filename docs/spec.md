@@ -62,9 +62,15 @@ HTTP (demo channel):
   stripping non-digits and the +55 country code; text 1–2000 chars; profile name at most
   60 chars. Errors → 422 (FastAPI default).
   LLM/provider failure → 200 with a fixed apology message in pt-BR (the customer never
-  sees a stack trace), error logged.
-- `GET /` serves `static/index.html`: phone and optional name fields, a message box,
-  the conversation, and a "nova conversa" button (new session).
+  sees a stack trace), error logged. Rate limit: 10 messages per minute per phone and
+  30 per IP, sliding window, checked before the agent → 429 with a pt-BR message and no
+  LLM call (stops brute-forcing the e-mail of a known phone and quota burning).
+- `GET /` serves `static/index.html` (with `static/app.js` and `static/app.css`): phone
+  and optional name fields, a message box, the conversation, and a "nova conversa"
+  button (new session). Text is HTML-escaped before WhatsApp formatting is rendered.
+- Every response carries security headers: a Content-Security-Policy allowing only the
+  page's own scripts and styles and calls to this API, no framing, `nosniff`,
+  `no-referrer`.
 - `POST /chat/reset` body `{phone}` → clears that session (demo convenience).
 
 A WhatsApp adapter (README only) would be one more module: webhook → map payload to

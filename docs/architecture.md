@@ -253,6 +253,26 @@ boundaries stay the same.
   content and personal data are not (LGPD).
 - **Git:** small commits, one concern each, Conventional Commits messages, no force-push.
 
+### ADR-14 Web channel hardening: rate limit and security headers
+
+**Context.** Order lookup treats the registered e-mail like a password for a known
+phone; without a limit on attempts it can be brute-forced. The free LLM quota (500
+requests a day) can be burned by a script. The page renders model output as HTML (for
+*bold*/_italic_), so it is an XSS surface.
+
+**Decision.** In the web adapter only (`api.py`), not in the core:
+- `RateLimiter` (sliding window, in memory, injected clock): 10 messages per minute per
+  phone, 30 per IP (a script changing phones each try is still limited). Checked before
+  the agent, so a 429 costs no LLM call.
+- Security headers on every response: a strict Content-Security-Policy (only the page's
+  own scripts and styles, requests only to this API, `frame-ancestors 'none'`), plus
+  `nosniff`, `X-Frame-Options: DENY` and `no-referrer`. The page's CSS and JS live in
+  files so the CSP can forbid inline code; HTML escaping stays the first defence.
+
+**Consequences.** Counters are per process: several instances would need Redis or the
+API gateway, and the WhatsApp provider limits senders on its side. The CSP is a second
+line: an escaping mistake in a future change would not become script execution.
+
 ### ADR-13 LLM access: one OpenAI-compatible client
 
 **Context.** The first version used Anthropic's SDK, which runs only models that speak
@@ -297,10 +317,11 @@ emporio/
   sessions.py         in-memory SessionStore with TTL
   whatsapp_format.py  reply sanitizer
   service.py          ChatService, IncomingMessage, OutgoingMessage
-  api.py              FastAPI app (demo channel)
+  api.py              FastAPI app (demo channel), security headers
+  rate_limit.py       sliding-window rate limit for the demo channel
   __main__.py         python -m emporio
 knowledge/policies.md policy manual transcribed from the PDF
-static/index.html     demo chat
+static/               demo chat: index.html, app.js, app.css (no inline code, for the CSP)
 scripts/run_scenarios.py     records docs/examples/ against the live model
 scripts/run_adversarial.py   adversarial eval (spec §10b), cases in adversarial_cases.py
 tests/                       unit tests; fakes.py, constants.py, shared fixtures in conftest.py

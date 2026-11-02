@@ -91,6 +91,9 @@ Each links to its record in [docs/architecture.md](docs/architecture.md).
 - **Resistance to manipulation** (spec §10b): layers instead of patches — the model has no
   power to leak data or change prices; the prompt defines scope as six jobs; an
   adversarial eval with code checks and a calibrated LLM judge measures it.
+- **Web channel hardening** (ADR-14): rate limit per phone and per IP before the LLM
+  (no brute-forcing an e-mail, no burning the quota); strict CSP and security headers
+  behind the page's HTML escaping.
 - **History** (ADR-08): in memory per phone, restarted after 30 idle minutes.
 
 Assumptions about the ambiguous parts of the case (two WhatsApp numbers in the manual,
@@ -115,8 +118,8 @@ against the acceptance table in [spec §10](docs/spec.md#10-acceptance-scenarios
 - LLM behaviour is checked by recorded runs and an adversarial eval reviewed by hand →
   automate the evals in CI on a schedule.
 - Free-tier quotas are small and Google may use free-tier prompts → a small paid model.
-- Sessions in memory, single process, expired ones never evicted; `/chat` has no rate
-  limit → Redis with TTL behind `SessionStore`, a rate limit per phone, async endpoints.
+- Sessions and rate-limit counters in memory, single process; expired sessions never
+  evicted → Redis with TTL for both, async endpoints.
 - Complaints go to a local JSONL file and nobody is notified → helpdesk integration
   (`ComplaintStore` is the only class to change) and bot pause on handoff.
 - Small wording slips remain (e.g. calling the order date the dispatch date); every
