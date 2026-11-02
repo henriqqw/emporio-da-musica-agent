@@ -102,3 +102,14 @@ def test_page_has_no_inline_script_or_style(api):
     assert "<script>" not in page and "<style>" not in page
     assert api.get("/static/app.js").status_code == 200
     assert api.get("/static/app.css").status_code == 200
+
+
+def test_api_docs_get_a_policy_that_lets_swagger_load(api):
+    # /docs loads Swagger from a CDN with an inline script: the strict policy blocked it
+    response = api.get("/docs")
+    assert response.status_code == 200
+    csp = response.headers["content-security-policy"]
+    assert "https://cdn.jsdelivr.net" in csp
+    assert "frame-ancestors 'none'" in csp
+    # the chat page keeps the strict one
+    assert "cdn.jsdelivr.net" not in api.get("/").headers["content-security-policy"]

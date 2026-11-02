@@ -33,6 +33,17 @@ SECURITY_HEADERS = {
     "X-Frame-Options": "DENY",
     "Referrer-Policy": "no-referrer",
 }
+# FastAPI's /docs and /redoc load Swagger/ReDoc from a CDN and use an inline script.
+# They are developer pages that never render customer content, so they get their own,
+# looser policy; the chat page and the API keep the strict one.
+DOCS_PATHS = ("/docs", "/redoc")
+DOCS_CSP = (
+    "default-src 'none'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+    "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+    "img-src 'self' data: https://fastapi.tiangolo.com https://cdn.jsdelivr.net; "
+    "font-src https://fonts.gstatic.com; worker-src blob:; connect-src 'self'; "
+    "frame-ancestors 'none'"
+)
 # Per minute. Generous for a person typing; stops a script brute-forcing the e-mail of
 # a known phone or burning the LLM quota. Checked before the agent, so a rejected
 # message costs no LLM call.
@@ -79,6 +90,8 @@ def create_app(
     ) -> Response:
         response = await call_next(request)
         response.headers.update(SECURITY_HEADERS)
+        if request.url.path in DOCS_PATHS:
+            response.headers["Content-Security-Policy"] = DOCS_CSP
         return response
 
     @app.get("/", include_in_schema=False)
