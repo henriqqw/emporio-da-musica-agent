@@ -16,27 +16,24 @@
 
 **Assistente:**
 
-> Ficamos na Rua 14 de Maio, 3200, no Centro de Campo Grande - MS.
+> Ficamos na Rua 14 de Maio, 3200 — Centro, Campo Grande - MS!
 > 
-> Nosso horário de funcionamento é:
-> • Segunda a sexta-feira: 09:00 às 18:00
-> • Sábado: 09:00 às 13:00
-> • Domingos e feriados: fechado
+> Nosso horário de atendimento é de segunda a sexta-feira, das 09:00 às 18:00, e aos sábados, das 09:00 às 13:00. Aos domingos e feriados estamos fechados.
 > 
-> Posso te ajudar com algum instrumento hoje, Felipe?
+> Posso te ajudar com mais alguma coisa, Felipe?
 
 **Cliente:** Vocês vendem cordas de violão?
 
 **Assistente:**
 
-> Trabalhamos exclusivamente com instrumentos musicais, Felipe, por isso não vendemos cordas nem outros acessórios, como cabos, palhetas ou amplificadores.
+> Poxa, Felipe, cordas de violão a gente não vende por aqui. A Empório da Música trabalha exclusivamente com instrumentos musicais, então não comercializamos acessórios.
 > 
-> Posso te ajudar a procurar algum violão ou outro instrumento do nosso catálogo?
+> Mas se estiver precisando de um violão novo, é só me falar! Posso te mostrar os modelos que temos disponíveis. Quer dar uma olhada?
 
 **Cliente:** Beleza. Me passa uma receita de bolo de cenoura?
 
 **Assistente:**
 
-> Ah, bolo de cenoura é uma delícia, Felipe! Mas por aqui eu só entendo de música e dos nossos instrumentos.
+> Isso eu não consigo fazer por aqui, receita de bolo não é comigo! 😄
 > 
-> Se quiser dar uma olhada em violões, guitarras ou qualquer outro instrumento, é só me falar. Como posso te ajudar com isso hoje?
+> Mas se quiser, posso te ajudar a escolher um instrumento novo ou tirar qualquer dúvida sobre os nossos produtos, pedidos, trocas e formas de pagamento. Tem alguma coisa desse tipo que eu possa fazer por você?
