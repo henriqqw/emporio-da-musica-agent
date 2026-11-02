@@ -82,6 +82,34 @@ def test_register_complaint_invalid_input_is_a_tool_error(toolbox):
         toolbox.run("register_complaint", {"summary": "", "category": "outro"}, _context())
 
 
+@pytest.mark.parametrize(
+    ("name", "arguments"),
+    [
+        ("search_products", "takamine"),  # not an object
+        ("search_products", {"query": "x", "color": "azul"}),  # unknown parameter
+        ("search_products", {"max_price": "1000"}),  # number sent as string
+        ("search_products", {"max_price": True}),  # bool is not a number
+        ("search_products", {"max_price": -1}),  # negative price
+        ("search_products", {"category": "Pianos de cauda"}),  # not in the enum
+        ("search_products", {"query": "x", "include_unavailable": "sim"}),
+        ("get_order", {}),  # missing e-mail
+        ("get_order", {"email": ANA_EMAIL, "order_id": 8.5}),  # not an integer
+        ("register_complaint", {"summary": "Atraso.", "category": "urgente"}),
+    ],
+)
+def test_invalid_arguments_are_rejected_with_a_clear_message(toolbox, name, arguments):
+    with pytest.raises(ToolError) as error:
+        toolbox.run(name, arguments, _context())
+    assert str(error.value)  # goes back to the model so it can fix the call
+
+
+def test_optional_parameters_sent_as_null_are_ignored(toolbox):
+    result = toolbox.run(
+        "search_products", {"query": "takamine gd20", "category": None}, _context()
+    )
+    assert result["products"][0]["id"] == 95
+
+
 def test_unknown_tool(toolbox):
     with pytest.raises(ToolError):
         toolbox.run("delete_everything", {}, _context())

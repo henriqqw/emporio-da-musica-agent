@@ -2,8 +2,8 @@
 
 Thin layer: validates input, injects session data (phone, message_id, time) that
 the model must never control, calls the domain and turns the result into compact
-JSON-ready dicts. Strict schemas cannot express length or range limits, so those
-are checked here.
+JSON-ready dicts. Every argument is validated here against the tool's own JSON
+schema, because not every provider enforces schemas (ADR-05, ADR-13).
 """
 
 from dataclasses import dataclass
@@ -111,7 +111,7 @@ class Toolbox:
         self._complaints = complaints
         self.definitions = tool_definitions(catalog.category_names)
 
-    def run(self, name: str, arguments: dict[str, Any], context: ToolContext) -> dict[str, Any]:
+    def run(self, name: str, arguments: Any, context: ToolContext) -> dict[str, Any]:
         handlers = {
             "search_products": self._search_products,
             "get_order": self._get_order,
@@ -119,11 +119,14 @@ class Toolbox:
         }
         if name not in handlers:
             raise ToolError(f"Ferramenta desconhecida: {name}")
-        return handlers[name](arguments, context)
+        schema = next(d["input_schema"] for d in self.definitions if d["name"] == name)
+        return handlers[name](validate_arguments(schema, arguments), context)
 
     def _search_products(self, args: dict[str, Any], _: ToolContext) -> dict[str, Any]:
         if not any(args.get(key) for key in ("query", "category", "max_price")):
             raise ToolError("Informe ao menos um entre query, category e max_price.")
+        if any(args.get(key, 0) < 0 for key in ("min_price", "max_price")):
+            raise ToolError("Preços não podem ser negativos.")
         result = self._catalog.search(
             query=args.get("query"),
             category=args.get("category"),
@@ -169,6 +172,46 @@ class Toolbox:
             "response_deadline": complaint.response_deadline,
             "order_linked": order_linked,
         }
+
+
+_JSON_TYPES: dict[str, tuple[type, ...]] = {
+    "string": (str,),
+    "number": (int, float),
+    "integer": (int,),
+    "boolean": (bool,),
+}
+
+
+def validate_arguments(schema: dict[str, Any], arguments: Any) -> dict[str, Any]:
+    """Check arguments against the subset of JSON Schema the tools use.
+
+    Optional parameters sent as null are dropped. Messages are in Portuguese and
+    specific, so the model can fix the call on its next attempt.
+    """
+    if not isinstance(arguments, dict):
+        raise ToolError("Os argumentos devem ser um objeto JSON.")
+    properties = schema["properties"]
+    unknown = sorted(set(arguments) - set(properties))
+    if unknown:
+        raise ToolError(f"Parâmetros desconhecidos: {', '.join(unknown)}.")
+    missing = [name for name in schema.get("required", []) if arguments.get(name) in (None, "")]
+    if missing:
+        raise ToolError(f"Parâmetros obrigatórios ausentes: {', '.join(missing)}.")
+
+    valid = {}
+    for name, value in arguments.items():
+        if value is None:
+            continue
+        spec = properties[name]
+        expected = spec["type"]
+        # bool is a subclass of int in Python: never accept it as a number, and vice versa
+        wrong_bool = isinstance(value, bool) != (expected == "boolean")
+        if wrong_bool or not isinstance(value, _JSON_TYPES[expected]):
+            raise ToolError(f"O parâmetro {name} deve ser do tipo {expected}.")
+        if "enum" in spec and value not in spec["enum"]:
+            raise ToolError(f"O parâmetro {name} deve ser um de: {', '.join(spec['enum'])}.")
+        valid[name] = value
+    return valid
 
 
 def _offer_json(offer: Offer) -> dict[str, Any]:
